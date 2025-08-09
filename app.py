@@ -32,7 +32,7 @@ app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
 app.permanent_session_lifetime = timedelta(days=30)  # duración de la cookie
 socketio = SocketIO(app)
 # Inicializa CSRF protection después de crear app y definir secret_key
-client = MongoClient(os.getenv)("MONGODB_URI" ))
+client = MongoClient(os.getenv)("MONGODB_URI" )
 db = client.hotquiz
 
 usuarios_col     = db.usuarios
