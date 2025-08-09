@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}🔥 Casino HotQuiz - Jugar{% endblock %}
+
+{% block content %}
+<div class="juego-container" style="max-width: 800px; margin: auto; color: #fff; text-align: center; font-family: 'Segoe UI', sans-serif;">
+  <h2 class="titulo">🔥 Casino HotQuiz 🔥</h2>
+  <p>Reta a otros usuarios con preguntas atrevidas y gana tokens si el público vota por ti.</p>
+  <a href="{{ url_for('inicio') }}" class="boton-menu" style="margin-bottom: 1.5rem; display: inline-block; width: 180px;">🎮 Volver a inicio</a>
+
+  <!-- Estado del usuario -->
+  <div class="status-info" style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+    Tu usuario: <strong>{{ session.get('alias', 'Invitado') }}</strong><br>
+    Tokens Oro: <strong>{{ saldo }}</strong> | Plata: <strong>{{ saldo_plata }}</strong>
+  </div>
+</div>
+
+<div class="sexy-casino" style="max-width: 700px; margin: auto; color: #fff; font-family: 'Segoe UI', sans-serif;">
+  <header class="casino-header" style="text-align: center; margin-bottom: 2rem;">
+    <h1>💋 HOTQUIZ CASINO 💋</h1>
+    <p>Juegos atrevidos, retos calientes y apuestas en vivo 🔥</p>
+    <div class="user-info" style="font-size: 1.1rem; margin-bottom: 1rem;">
+      <span>👤 {{ session.get('alias', 'Invitado') }}</span> &nbsp; | &nbsp;
+      <span>💰 Oro: {{ saldo }} | Plata: {{ saldo_plata }}</span>
+    </div>
+    <a href="{{ url_for('lanzar') }}" class="cta-button flicker" style="display: inline-block; padding: 10px 20px; background: #ff4081; border-radius: 8px; color: white; text-decoration: none; font-weight: bold;">🚀 Lanzar reto ahora</a>
+  </header>
+
+  <section class="game-grid" style="display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 1rem;">
+    <div class="game-card" style="background:#222; border-radius: 12px; padding: 15px; text-align: center;">
+      <div class="emoji" style="font-size: 2rem;">🔥</div>
+      <h3>¿Quién calienta más?</h3>
+      <p>Sube tu foto más hot y reta a alguien a superarte 😈</p>
+      <a href="{{ url_for('foto_hot') }}" class="play-btn" style="background:#ff4081; color:#fff; padding: 8px 15px; border-radius: 8px; display: inline-block; text-decoration: none;">Jugar</a>
+    </div>
+
+    <div class="game-card" style="background:#222; border-radius: 12px; padding: 15px; text-align: center;">
+      <div class="emoji" style="font-size: 2rem;">🎙️</div>
+      <h3>Susurra y Gana</h3>
+      <p>Graba tu voz más sexy... y conquista por audio 💦</p>
+      <a href="{{ url_for('audio_hot') }}" class="play-btn" style="background:#ff4081; color:#fff; padding: 8px 15px; border-radius: 8px; display: inline-block; text-decoration: none;">Jugar</a>
+    </div>
+
+    <div class="game-card" style="background:#222; border-radius: 12px; padding: 15px; text-align: center;">
+      <div class="emoji" style="font-size: 2rem;">🎲</div>
+      <h3>Hot Roulette</h3>
+      <p>Gira la ruleta... ¿Verdad o Reto? 🔥</p>
+      <a href="{{ url_for('hot_roulette') }}" class="play-btn" style="background:#ff4081; color:#fff; padding: 8px 15px; border-radius: 8px; display: inline-block; text-decoration: none;">Jugar</a>
+    </div>
+
+    <div class="game-card" style="background:#222; border-radius: 12px; padding: 15px; text-align: center;">
+      <div class="emoji" style="font-size: 2rem;">📸</div>
+      <h3>HotCopy</h3>
+      <p>Imita la pose más provocadora y gana votos 🥵</p>
+      <a href="{{ url_for('hotcopy') }}" class="play-btn" style="background:#ff4081; color:#fff; padding: 8px 15px; border-radius: 8px; display: inline-block; text-decoration: none;">Jugar</a>
+    </div>
+
+    <div class="game-card" style="background:#222; border-radius: 12px; padding: 15px; text-align: center;">
+      <div class="emoji" style="font-size: 2rem;">🕵️‍♀️</div>
+      <h3>¿Quién lo dijo?</h3>
+      <p>Adivina la mente perversa detrás de la confesión 😜</p>
+      <a href="{{ url_for('adivina') }}" class="play-btn" style="background:#ff4081; color:#fff; padding: 8px 15px; border-radius: 8px; display: inline-block; text-decoration: none;">Jugar</a>
+    </div>
+  </section>
+
+  <footer class="casino-footer" style="text-align:center; margin-top: 2rem; color: #aaa;">
+    <p>✨ Más juegos picantes y clasificaciones en camino... 💋</p>
+    <a href="{{ url_for('inicio') }}" class="back-btn" style="color:#ff4081; text-decoration:none;">⬅️ Volver al menú</a>
+  </footer>
+</div>
+{% endblock %}

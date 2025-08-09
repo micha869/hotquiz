@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}💳 Comprar Tokens | HotQuiz{% endblock %}
+
+{% block content %}
+<div class="tokens-container" style="max-width: 600px; margin: auto; color: #fff; text-align: center;">
+    <h2 style="margin-bottom: 1rem;">💳 Comprar Tokens</h2>
+    <p>💰 Tus tokens actuales: <strong>{{ saldo }}</strong></p>
+    <a href="{{ url_for('inicio') }}" class="boton-menu" style="margin-bottom: 2rem; display: inline-block; width: 180px;">🏠 Volver al Menú</a>
+
+    <div style="background:#1a1a1a; padding:15px; border-radius:10px; color:#ccc; font-size:0.95rem; text-align:left; margin-bottom: 2rem;">
+        <h3 style="color:#ff4081;">Información de Pago</h3>
+        <p>Realiza tu pago a uno de los siguientes métodos y luego sube tu comprobante en el formulario de abajo.</p>
+        <ul style="line-height: 1.7;">
+            <li>📧 Correo: <strong style="color:#fff;">michel86432@gmail.com</strong></li>
+            <li>📱 WhatsApp: <strong style="color:#fff;">7471606453</strong></li>
+        </ul>
+        <h4 style="margin-top:1rem;">💳 Métodos de pago:</h4>
+        <ul style="line-height: 1.7;">
+            <li>🧾 OXXO: <strong style="color:#fff;">2242170260220564</strong></li>
+            <li>🏦 SPEI (BBVA): <strong style="color:#fff;">728969000116750382</strong></li>
+            <li>🔢 CLABE BBVA: <strong style="color:#fff;">012180015382596698</strong></li>
+        </ul>
+    </div>
+
+    <form action="{{ url_for('comprar_tokens') }}" method="POST" enctype="multipart/form-data"
+        style="background:#111; padding:20px; border-radius:12px; margin: 2rem 0;">
+        <h3>📤 Subir Comprobante de Pago</h3>
+        <p style="color:#f44336; font-size:0.85rem;">* Los campos de cantidad, correo y comprobante son obligatorios.</p>
+
+        <select name="cantidad" required
+                style="width: 100%; padding:10px; border-radius:8px; background:#222; color:#fff; border:1px solid #4caf50; margin-bottom:10px;">
+            <option value="">-- Selecciona la cantidad comprada --</option>
+            <option value="10">10 tokens - $5.00</option>
+            <option value="25">25 tokens - $12.50</option>
+            <option value="50">50 tokens - $25.00</option>
+            <option value="100">100 tokens - $50.00</option>
+        </select>
+
+        <input type="email" name="correo" placeholder="Ingresa tu correo electrónico" required
+               style="width: 100%; padding:10px; border-radius:8px; background:#222; color:#fff; border:1px solid #4caf50; margin-bottom:10px;">
+
+        <input type="text" name="numero_whatsapp" placeholder="Número de WhatsApp (opcional)"
+               style="width: 100%; padding:10px; border-radius:8px; background:#222; color:#fff; border:1px solid #4caf50; margin-bottom:10px;">
+
+        <label for="comprobante" style="display: block; text-align: left; margin-bottom: 5px;">Sube tu comprobante de pago:</label>
+        <input type="file" name="comprobante" id="comprobante" accept=".png,.jpg,.jpeg,.gif" required
+               style="width: 100%; padding:10px; border-radius:8px; background:#222; color:#fff; border:1px solid #4caf50; margin-bottom:20px;">
+
+        <button type="submit"
+                style="background:#4caf50; border:none; border-radius:10px; padding:12px 20px; color:#fff; cursor:pointer;">
+            Finalizar Compra 💳
+        </button>
+    </form>
+    
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul class="flashes">
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% endwith %}
+
+    <a href="{{ url_for('jugar') }}" style="color:#ff4081; display: inline-block; margin-top: 2rem; text-decoration: none;">🎮 Ir a Juegos</a>
+</div>
+
+<style>
+.flashes li {
+    background-color: #ff4081;
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    list-style: none;
+    text-align: center;
+}
+</style>
+{% endblock %}

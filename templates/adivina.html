@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}🕵️ Adivina Confesiones{% endblock %}
+
+{% block content %}
+<div class="container-futurista">
+    <h1 class="titulo-neon">🕵️ Adivina Confesiones</h1>
+    <a href="{{ url_for('jugar') }}" class="boton-futurista boton-menu">🎮 Volver a Juegos</a>
+
+    <div class="form-futurista">
+        <textarea id="texto" rows="3" placeholder="Escribe tu confesión..." class="input-futurista"></textarea>
+        <button id="btnEnviar" class="boton-futurista boton-rosa">
+            ➕ Agregar Confesión
+        </button>
+    </div>
+
+    <div id="listaConfesiones" class="lista-futurista">
+        {% for item in textos %}
+        <div class="confesion-card" data-id="{{ item._id }}">
+            <p class="user-info">{{ item.user }} 🕵️</p>
+            <p class="confesion-text">{{ item.texto }}</p>
+            <small class="fecha-info">{{ item.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+
+            <div class="reacciones-futuristas">
+                <button class="btnReaccion emoji-btn" data-tipo="like">👍 {{ item.reacciones.like if item.reacciones else 0 }}</button>
+                <button class="btnReaccion emoji-btn" data-tipo="love">❤️ {{ item.reacciones.love if item.reacciones else 0 }}</button>
+                <button class="btnReaccion emoji-btn" data-tipo="laugh">😂 {{ item.reacciones.laugh if item.reacciones else 0 }}</button>
+                <button class="btnReaccion emoji-btn" data-tipo="shock">😱 {{ item.reacciones.shock if item.reacciones else 0 }}</button>
+                <button class="btnReaccion emoji-btn" data-tipo="dislike">👎 {{ item.reacciones.dislike if item.reacciones else 0 }}</button>
+            </div>
+
+            <div class="comentarios-futurista">
+                <h4 class="comentarios-titulo">💬 Comentarios</h4>
+                <div class="comentarios-lista">
+                    {% if item.comentarios %}
+                    {% for com in item.comentarios %}
+                    <div class="comentario-item">
+                        <strong class="comentario-user">{{ com.user }}</strong>: <span>{{ com.texto }}</span><br>
+                        <small class="fecha-info">{{ com.fecha.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="comentarios-vacio">Sin comentarios aún</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="comentar-box">
+                <input type="text" class="inputComentario input-futurista" placeholder="Agrega un comentario..." maxlength="200">
+                <button class="btnAgregarComentario boton-futurista boton-rosa">Comentar</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    // Agregar confesión
+    document.getElementById("btnEnviar").addEventListener("click", () => {
+        const texto = document.getElementById("texto").value.trim();
+        if (!texto) {
+            alert("Escribe algo para agregar");
+            return;
+        }
+
+        fetch("/adivina/agregar", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({texto: texto})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    });
+
+    // Manejar reacciones
+    document.querySelectorAll(".btnReaccion").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const confDiv = btn.closest(".confesion-card");
+            const confId = confDiv.getAttribute("data-id");
+            const tipo = btn.getAttribute("data-tipo");
+
+            fetch("/adivina/reaccionar", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({confesionId: confId, tipo: tipo})
+            }).then(res => res.json())
+            .then(data => {
+                if(data.success){
+                    let count = parseInt(btn.textContent.match(/\d+$/)[0]);
+                    btn.textContent = btn.textContent.replace(/\d+$/, count + 1);
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+
+    // Manejar agregar comentario
+    document.querySelectorAll(".btnAgregarComentario").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const confDiv = btn.closest(".confesion-card");
+            const confId = confDiv.getAttribute("data-id");
+            const input = confDiv.querySelector(".inputComentario");
+            const texto = input.value.trim();
+
+            if(!texto){
+                alert("Escribe un comentario");
+                return;
+            }
+
+            fetch("/adivina/comentar", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({confesionId: confId, texto: texto})
+            }).then(res => res.json())
+            .then(data => {
+                if(data.success){
+                    const comentariosDiv = confDiv.querySelector(".comentarios-lista");
+                    const nuevoCom = document.createElement("div");
+                    nuevoCom.className = "comentario-item";
+                    nuevoCom.innerHTML = `<strong class="comentario-user">Tú</strong>: <span>${texto}</span><br><small class="fecha-info">Ahora mismo</small>`;
+                    comentariosDiv.appendChild(nuevoCom);
+                    input.value = "";
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+</script>
+
+<style>
+    /* Estilos generales y variables neón */
+    :root {
+        --color-neon-pink: #ff33cc;
+        --color-neon-purple: #9933ff;
+        --color-neon-aqua: #00ffff;
+        --color-text-light: #f0f0f0;
+        --color-bg-dark: #1a0033;
+        --color-bg-card-dark: #29004d;
+    }
+
+    body {
+        background: var(--color-bg-dark);
+        color: var(--color-text-light);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .container-futurista {
+        max-width: 700px;
+        margin: auto;
+        padding: 20px;
+        text-align: center;
+    }
+
+    /* Títulos y texto neón */
+    .titulo-neon {
+        text-align: center;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--color-neon-aqua);
+        text-shadow: 0 0 10px var(--color-neon-aqua), 0 0 20px var(--color-neon-pink);
+    }
+
+    /* Botones y formularios */
+    .boton-futurista {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 25px;
+        font-weight: bold;
+        text-transform: uppercase;
+        text-decoration: none;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        transition: transform 0.2s ease, background 0.2s ease;
+        cursor: pointer;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: white;
+    }
+
+    .boton-futurista:hover {
+        transform: translateY(-2px);
+    }
+
+    .boton-menu {
+        background: var(--color-neon-purple);
+    }
+
+    .boton-rosa {
+        background: var(--color-neon-pink);
+        box-shadow: 0 0 10px var(--color-neon-pink);
+    }
+
+    .form-futurista {
+        margin-top: 20px;
+        width: 100%;
+        max-width: 500px;
+        background: var(--color-bg-card-dark);
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 0 15px var(--color-neon-aqua);
+    }
+
+    .input-futurista {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--color-neon-pink);
+        border-radius: 5px;
+        background: #330066;
+        color: #fff;
+        resize: none;
+        word-wrap: break-word;
+        margin-bottom: 10px;
+    }
+
+    /* Lista de confesiones */
+    .lista-futurista {
+        margin-top: 30px;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .confesion-card {
+        background: var(--color-bg-card-dark);
+        margin-bottom: 15px;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px var(--color-neon-purple);
+        border: 1px solid var(--color-neon-purple);
+        color: white;
+    }
+
+    .user-info {
+        color: var(--color-neon-aqua);
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    .confesion-text {
+        word-wrap: break-word;
+        margin-bottom: 10px;
+        text-align: left;
+    }
+
+    .fecha-info {
+        color: #888;
+        font-size: 0.8em;
+    }
+
+    /* Reacciones */
+    .reacciones-futuristas {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .emoji-btn {
+        background: transparent;
+        border: 2px solid var(--color-neon-pink);
+        padding: 8px 12px;
+        border-radius: 50px;
+        cursor: pointer;
+        font-size: 16px;
+        color: var(--color-neon-pink);
+        transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        box-shadow: 0 0 5px var(--color-neon-pink);
+    }
+
+    .reacciones {
+    margin-top: 15px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.reacciones .emoji-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 8px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #fff;
+    transition: 0.2s;
+}
+.reacciones .emoji-btn:hover {
+    background: var(--color-neon-pink);
+    transform: scale(1.1);
+}
+
+</style>
+{% endblock %}

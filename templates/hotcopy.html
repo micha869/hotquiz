@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}🔥 Hot Copy – Fotos Originales e Imitaciones{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="neon-text">🔥 Hot Copy – Fotos Originales e Imitaciones</h2>
+    <p class="subtitle">Sube una foto original o intenta imitar una ya publicada.</p>
+    <a href="{{ url_for('jugar') }}" class="boton-menu-neon">🎮 Volver a Juegos</a>
+    <div class="saldo-card">
+        💰 Tokens: <span id="saldo">{{ saldo }}</span>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="upload-form">
+        <h3>📸 Subir Foto</h3>
+        <select name="original_id" class="input-futurista">
+            <option value="">-- Subir como original --</option>
+            {% for original in originals %}
+            <option value="{{ original._id }}">{{ original.user }} - {{ original.fecha.strftime("%d/%m %H:%M") }}</option>
+            {% endfor %}
+        </select>
+        <input type="file" name="imagen" accept="image/*" class="input-futurista" required />
+        <button type="submit" class="btn-futurista">🚀 Subir</button>
+    </form>
+
+    <div class="gallery">
+        <h3>🌟 Fotos Originales</h3>
+        {% for o in originals %}
+        <div class="photo-group">
+            <div class="photo-card original">
+                <span class="label-foto">ORIGINAL</span>
+                <img src="{{ url_for('static', filename=o.image) }}" alt="Foto original de {{ o.user }}" />
+                <div class="info">
+                    <strong>{{ o.user }}</strong>
+                    <small>{{ o.fecha.strftime("%d/%m/%Y %H:%M") }}</small>
+                    <div class="actions">
+                        <button onclick="votar('{{ o._id }}')" class="btn-votar">👍 {{ o.votos }}</button>
+                        <div class="reaction-buttons">
+                            {% for emoji, count in o.reacciones.items() %}
+                            <button onclick="reaccion('{{ o._id }}', '{{ emoji }}')" class="btn-reaccion">{{ emoji }} <span class="count">{{ count }}</span></button>
+                            {% endfor %}
+                        </div>
+                        {% if alias == o.user %}
+                        <form method="POST" action="{{ url_for('eliminar_hotcopy', foto_id=o._id) }}" class="form-eliminar">
+                            <button type="submit" class="btn-eliminar">🗑️</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="comentarios">
+                        {% for c in o.comentarios %}
+                        <div><strong>{{ c.usuario }}</strong>: {{ c.texto }}</div>
+                        {% endfor %}
+                        <input type="text" placeholder="Comentar..." class="input-futurista" onkeydown="if(event.key=='Enter') comentar('{{ o._id }}', this)" />
+                    </div>
+                </div>
+            </div>
+
+            {% if o.imitations %}
+            <div class="imitations-grid">
+                <h4>Imitaciones:</h4>
+                {% for c in o.imitations %}
+                <div class="photo-card imitation">
+                    <span class="label-foto">IMITACIÓN</span>
+                    <img src="{{ url_for('static', filename=c.image) }}" alt="Imitación de {{ c.user }}" />
+                    <div class="info">
+                        <strong>{{ c.user }}</strong>
+                        <small>{{ c.fecha.strftime("%d/%m/%Y %H:%M") }}</small>
+                        <div class="actions">
+                            <button onclick="votar('{{ c._id }}')" class="btn-votar">👍 {{ c.votos }}</button>
+                            <div class="reaction-buttons">
+                                {% for emoji, count in c.reacciones.items() %}
+                                <button onclick="reaccion('{{ c._id }}', '{{ emoji }}')" class="btn-reaccion">{{ emoji }} <span class="count">{{ count }}</span></button>
+                                {% endfor %}
+                            </div>
+                            {% if alias == c.user %}
+                            <form method="POST" action="{{ url_for('eliminar_hotcopy', foto_id=c._id) }}" class="form-eliminar">
+                                <button type="submit" class="btn-eliminar">🗑️</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        <div class="comentarios">
+                            {% for com in c.comentarios %}
+                            <div><strong>{{ com.usuario }}</strong>: {{ com.texto }}</div>
+                            {% endfor %}
+                            <input type="text" placeholder="Comentar..." class="input-futurista" onkeydown="if(event.key=='Enter') comentar('{{ c._id }}', this)" />
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function votar(fotoId) {
+    fetch(`/votar/${fotoId}`, { method: "POST" })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message);
+        });
+}
+
+function reaccion(fotoId, tipo) {
+    fetch(`/reaccion/${fotoId}/${tipo}`, { method: "POST" })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message);
+        });
+}
+
+function comentar(id, input) {
+    const texto = input.value.trim();
+    if (!texto) return;
+    fetch('/comentar_hotcopy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, texto })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.message);
+    });
+}
+</script>
+
+<style>
+    body {
+        background-color: #0d0d0d;
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    .container {
+        max-width: 1000px;
+        margin: auto;
+        padding: 20px;
+    }
+    .neon-text {
+        text-align: center;
+        color: #fff;
+        text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #a020f0, 0 0 80px #a020f0;
+    }
+    .subtitle {
+        text-align: center;
+        color: #ccc;
+    }
+
+    .boton-menu-neon {
+        display: block;
+        margin: 20px auto;
+        width: 220px;
+        padding: 12px;
+        text-align: center;
+        background: linear-gradient(45deg, #ff00ff, #a020f0);
+        color: white;
+        border-radius: 50px;
+        font-weight: bold;
+        text-decoration: none;
+        transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .boton-menu-neon:hover {
+        box-shadow: 0 0 20px #ff00ff;
+        transform: scale(1.05);
+    }
+    .saldo-card {
+        background: #1a1a1a;
+        padding: 15px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 25px;
+        font-weight: bold;
+        box-shadow: 0 0 10px rgba(160, 32, 240, 0.4);
+    }
+    .upload-form {
+        background: #111;
+        padding: 25px;
+        border-radius: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        box-shadow: 0 0 15px rgba(255, 64, 129, 0.5);
+    }
+    .upload-form h3 {
+        color: #ff4081;
+        text-align: center;
+    }
+    .input-futurista {
+        padding: 12px;
+        border-radius: 8px;
+        border: 2px solid #a020f0;
+        background: #222;
+        color: #fff;
+        font-size: 1rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .input-futurista:focus {
+        outline: none;
+        border-color: #ff00ff;
+        box-shadow: 0 0 10px #ff00ff;
+    }
+    .btn-futurista {
+        padding: 12px;
+        border-radius: 8px;
+        border: none;
+        background: linear-gradient(45deg, #ff00ff, #a020f0);
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .btn-futurista:hover {
+        box-shadow: 0 0 15px #ff00ff;
+        transform: translateY(-2px);
+    }
+
+    .gallery {
+        margin-top: 40px;
+    }
+    h3 {
+        color: #ff00ff;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .photo-group {
+        margin-bottom: 50px;
+        padding: 20px;
+        background: #111;
+        border-radius: 20px;
+        box-shadow: 0 0 20px rgba(160, 32, 240, 0.6);
+        position: relative;
+    }
+    .photo-card {
+        background: #1c1c1c;
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+        position: relative;
+    }
+    .photo-card.original {
+        box-shadow: 0 0 10px #00fff7;
+    }
+    .photo-card.imitation {
+        box-shadow: 0 0 10px #ff9800;
+    }
+    .label-foto {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: linear-gradient(45deg, #ff00ff, #a020f0);
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 5px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    
+    /* 💡 CÓDIGO CORREGIDO PARA EL TAMAÑO DE LA IMAGEN */
+    .photo-card img {
+        width: auto;
+        max-width: 100%;
+        max-height: 500px; /* Limita la altura máxima para evitar que sean demasiado grandes */
+        object-fit: contain; /* Asegura que la imagen completa sea visible sin recortar */
+        border-radius: 10px;
+        border: 2px solid #a020f0;
+    }
+
+    .info {
+        margin-top: 15px;
+    }
+    .info strong {
+        color: #ff00ff;
+    }
+    .info small {
+        display: block;
+        color: #aaa;
+    }
+    .actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+    }
+    .btn-votar, .btn-reaccion {
+        background: none;
+        border: 2px solid #a020f0;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .btn-votar:hover, .btn-reaccion:hover {
+        background: #a020f0;
+        border-color: #a020f0;
+        box-shadow: 0 0 10px #a020f0;
+    }
+    .reaction-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    .btn-reaccion {
+        padding: 5px 10px;
+        font-size: 0.9rem;
+    }
+    .btn-reaccion .count {
+        margin-left: 5px;
+        color: #ff00ff;
+    }
+    .form-eliminar {
+        display: inline;
+    }
+    .btn-eliminar {
+        background: #d00;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+    .btn-eliminar:hover {
+        background: #ff4d4d;
+    }
+    .comentarios {
+        margin-top: 15px;
+        padding: 10px;
+        background: #111;
+        border-radius: 10px;
+    }
+    .comentarios div {
+        margin-bottom: 5px;
+        word-wrap: break-word;
+    }
+    .comentarios input {
+        margin-top: 10px;
+    }
+    .imitations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .imitations-grid h4 {
+        grid-column: 1 / -1;
+        color: #ff9800;
+        text-align: left;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}

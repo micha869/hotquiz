@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Perfiles{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/perfiles.css') }}">
+
+<div class="perfiles-container">
+    {% for perfil in perfiles %}
+    <div class="card-perfil">
+        <img src="{{ url_for('static', filename='avatars/' ~ perfil.avatar) }}" alt="Avatar" class="avatar-perfil">
+
+        {% if perfil.usuario == me %}
+        <!-- Formulario para cambiar avatar -->
+        <form action="{{ url_for('cambiar_avatar') }}" method="POST" enctype="multipart/form-data" class="form-avatar">
+            <label for="avatar_{{ loop.index }}" class="btn-cambiar-avatar">Cambiar avatar</label>
+            <input type="file" name="avatar" id="avatar_{{ loop.index }}" accept=".png,.jpg,.jpeg" style="display:none" onchange="this.form.submit()">
+        </form>
+        {% endif %}
+
+        <h3>{{ perfil.usuario }}</h3>
+        <p>Publicaciones: {{ perfil.publicaciones }}</p>
+        <p>Tokens oro: <strong>{{ perfil.token_oro }}</strong></p>
+        <p>Followers: {{ perfil.followers }} | Following: {{ perfil.following }}</p>
+
+        {% if perfil.rank and perfil.rank <= 3 %}
+            <span class="badge gold">🏅 Top {{ perfil.rank }}</span>
+        {% endif %}
+
+        {% if perfil.usuario == me %}
+            {% if not perfil.verificado %}
+                <!-- Botón para verificar identidad -->
+                <a href="{{ url_for('verificar') }}" class="btn-verificar">🔒 Verificar identidad</a>
+            {% else %}
+                <!-- Botón para retirar tokens -->
+                <a href="{{ url_for('retiro') }}" class="btn-retiro">💰 Retirar tokens</a>
+            {% endif %}
+        {% else %}
+            <!-- Botones de seguir / dejar de seguir -->
+            {% if perfil.is_following %}
+                <form method="POST" action="{{ url_for('unfollow', usuario=perfil.usuario) }}">
+                    <button class="btn-unfollow">Dejar de seguir</button>
+                </form>
+            {% else %}
+                <form method="POST" action="{{ url_for('follow', usuario=perfil.usuario) }}">
+                    <button class="btn-follow">Seguir</button>
+                </form>
+            {% endif %}
+            <!-- Aquí está la corrección: el parámetro es target, no usuario -->
+            <a class="btn-chat" href="{{ url_for('chat', target=perfil.usuario) }}">💬 Chat</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.perfiles-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin: 30px 0;
+}
+.card-perfil {
+    background: #111;
+    color: #eee;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 15px #0ff3;
+    width: 280px;
+    text-align: center;
+}
+.avatar-perfil {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid #0ff;
+    margin-bottom: 10px;
+}
+.btn-cambiar-avatar {
+    display: inline-block;
+    background: #0ff;
+    color: #000;
+    padding: 6px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-bottom: 10px;
+    transition: background-color 0.3s;
+    font-size: 0.9rem;
+}
+.btn-follow, .btn-unfollow, .btn-chat, .btn-verificar, .btn-retiro {
+    display: block;
+    width: 90%;
+    margin: 5px auto;
+    padding: 8px 0;
+    background: #0ff;
+    color: #000;
+    border-radius: 12px;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: 0.3s;
+}
+.btn-follow:hover, .btn-unfollow:hover, .btn-chat:hover, .btn-verificar:hover, .btn-retiro:hover {
+    background: #0cf;
+    color: #fff;
+}
+.badge.gold {
+    display: inline-block;
+    background: gold;
+    color: #000;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

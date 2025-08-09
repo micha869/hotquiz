@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Política de Privacidad | HotQuiz{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        background: linear-gradient(135deg, #1e0a3b, #4a1f6a, #d4278a);
+    }
+    
+    .card-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .neon-card {
+        max-width: 600px;
+        width: 100%;
+        background: rgba(255, 0, 128, 0.05);
+        border-radius: 20px;
+        box-shadow: 0 0 25px #ff00aa;
+        padding: 2rem;
+        border: 2px solid #ff66b2;
+        color: #e0e0e0;
+    }
+
+    .neon-card h1 {
+        text-align: center;
+        color: #ff66b2;
+        text-shadow: 0 0 15px #ff66b2;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .scroll-content {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-right: 15px;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    .scroll-content h2 {
+        color: #ff99cc;
+        text-shadow: 0 0 8px #ff99cc;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.2rem;
+    }
+
+    .scroll-content p {
+        margin-bottom: 1rem;
+    }
+
+    .scroll-content ul {
+        margin-left: 20px;
+        margin-bottom: 1rem;
+    }
+    
+    .scroll-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .scroll-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+
+    .scroll-content::-webkit-scrollbar-thumb {
+        background-color: #ff66b2;
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+</style>
+
+<div class="card-container">
+    <div class="neon-card">
+        <h1>📜 Política de Privacidad – HotQuiz</h1>
+        <div class="scroll-content">
+            <p><strong>Última actualización: 30 de julio de 2025</strong></p>
+            <p>En HotQuiz nos tomamos en serio la privacidad y seguridad de nuestros usuarios. Esta Política de Privacidad explica cómo recopilamos, usamos y protegemos tu información. Al registrarte y usar HotQuiz, aceptas los términos aquí descritos.</p>
+            <hr>
+            <h2>1. Requisitos de edad</h2>
+            <ul>
+                <li>HotQuiz es una plataforma exclusiva para mayores de 18 años.</li>
+                <li>Si eres menor de edad, no puedes registrarte ni utilizar nuestros servicios.</li>
+                <li>Podemos solicitar verificación de edad en cualquier momento para confirmar el cumplimiento de esta condición.</li>
+            </ul>
+            <hr>
+            <h2>2. Información que recopilamos</h2>
+            <p>Para brindarte el servicio, podemos recopilar:</p>
+            <ul>
+                <li>Datos de registro: nombre de usuario, correo electrónico, contraseña.</li>
+                <li>Datos opcionales de perfil: foto, ubicación, biografía.</li>
+                <li>Contenido que subes: videos, imágenes, comentarios, reacciones.</li>
+                <li>Datos de uso: interacciones, visualizaciones, historial de navegación en la plataforma.</li>
+                <li>Datos financieros (solo para retiros de tokens): nombre real, identificación oficial, datos de cuenta de pago (PayPal, cuenta bancaria, Mercado Pago, etc.).</li>
+            </ul>
+            <hr>
+            <h2>3. Uso de la información</h2>
+            <p>La información recopilada se utiliza para:</p>
+            <ul>
+                <li>Operar y mejorar la plataforma HotQuiz.</li>
+                <li>Procesar y mostrar el contenido.</li>
+            </ul>
+            <hr>
+        </div>
+    </div>
+</div>
+{% endblock %}

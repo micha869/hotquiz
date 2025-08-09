@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}Chat con {{ target }}{% endblock %}
+{% block content %}
+<script src="https://js.pusher.com/7.2/pusher.min.js"></script>
+
+<style>
+    /* Estilos generales del cuerpo */
+    body {
+        background-color: #0e1621;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    /* Contenedor principal del chat */
+    .chat-container {
+        max-width: 700px;
+        height: 90vh;
+        margin: 20px auto;
+        display: flex;
+        flex-direction: column;
+        background-color: #0e1621;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Encabezado del chat */
+    .chat-header {
+        background-color: #16212c;
+        color: white;
+        padding: 15px 20px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        border-bottom: 1px solid #1c2b3a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .chat-header .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    /* Caja de mensajes */
+    #chat-box {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        background-color: #0f1925;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        scroll-behavior: smooth;
+    }
+
+    /* Estilos de las burbujas de mensaje */
+    .msg-wrapper {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        max-width: 80%;
+    }
+
+    .msg-wrapper.yo {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
+
+    .msg-wrapper.otro {
+        align-self: flex-start;
+        flex-direction: row;
+    }
+
+    .msg {
+        padding: 12px 16px;
+        border-radius: 18px;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: pre-wrap;
+        position: relative;
+        color: white;
+    }
+
+    .msg.yo {
+        background-color: #2b5278;
+        border-bottom-right-radius: 4px;
+        text-align: right;
+    }
+
+    .msg.otro {
+        background-color: #212c37;
+        border-bottom-left-radius: 4px;
+        text-align: left;
+    }
+
+    /* Estilo del avatar en las burbujas */
+    .msg-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    /* Contenido multimedia en los mensajes */
+    .chat-img {
+        max-width: 100%;
+        border-radius: 10px;
+        margin-top: 5px;
+    }
+
+    audio {
+        width: 100%;
+        max-width: 250px;
+        margin-top: 5px;
+    }
+
+    /* Barra de entrada de mensajes */
+    .input-bar {
+        background-color: #16212c;
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #msg-input {
+        flex: 1;
+        padding: 12px 15px;
+        border-radius: 20px;
+        border: none;
+        background-color: #212c37;
+        color: white;
+        font-size: 1rem;
+        outline: none;
+    }
+
+    #msg-input::placeholder {
+        color: #7f8a9a;
+    }
+
+    .input-bar button {
+        background-color: #55a2f5;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 20px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .input-bar button:hover {
+        background-color: #4a91e0;
+    }
+    
+    #file-input {
+        display: none;
+    }
+
+    .file-label {
+        color: #55a2f5;
+        font-size: 24px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .file-label:hover {
+        color: #4a91e0;
+    }
+
+    /* Scrollbar */
+    #chat-box::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+        background: #16212c;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+        background-color: #2b5278;
+        border-radius: 10px;
+        border: 2px solid #16212c;
+    }
+</style>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <img src="{{ target_avatar_url }}" class="avatar">
+        <span>💬 Chat con {{ target }}</span>
+    </div>
+    <div id="chat-box">
+        {% for m in mensajes %}
+        <div class="msg-wrapper {{ 'yo' if m.from == me else 'otro' }}">
+            {% if m.from != me %}
+            <img src="{{ m.avatar_url }}" class="msg-avatar">
+            {% endif %}
+            <div class="msg {{ 'yo' if m.from == me else 'otro' }}">
+                {% if m.tipo == 'text' %}
+                    <span>{{ m.message }}</span>
+                {% elif m.tipo == 'image' %}
+                    <img src="{{ url_for('static', filename='uploads/chat/' ~ m.message) }}" class="chat-img">
+                {% elif m.tipo == 'audio' %}
+                    <audio controls src="{{ url_for('static', filename='uploads/chat/' ~ m.message) }}"></audio>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <form id="chat-form" class="input-bar">
+        <label for="file-input" class="file-label">📎</label>
+        <input type="file" id="file-input" name="media" accept="image/*,audio/*" title="Enviar imagen o audio">
+        <input type="text" id="msg-input" name="message" placeholder="Escribe un mensaje..." autocomplete="off">
+        <button type="submit">Enviar</button>
+    </form>
+</div>
+
+<script>
+    const me = "{{ me }}";
+    const target = "{{ target }}";
+    const room = [me, target].sort().join('_');
+
+    const pusher = new Pusher("{{ pusher_key }}", {
+        cluster: "{{ pusher_cluster }}",
+        encrypted: true
+    });
+    const channel = pusher.subscribe(room);
+
+    channel.bind('receive_message', function(data) {
+        const chatBox = document.getElementById('chat-box');
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('msg-wrapper', data.from === me ? 'yo' : 'otro');
+
+        // Agregar avatar si es un mensaje de otro usuario
+        if (data.from !== me) {
+            const avatar = document.createElement('img');
+            avatar.src = data.avatar_url; // Usa la URL enviada por el servidor
+            avatar.classList.add('msg-avatar');
+            wrapper.appendChild(avatar);
+        }
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('msg', data.from === me ? 'yo' : 'otro');
+
+        if (data.tipo === "text") {
+            msgDiv.innerHTML = `<span>${data.message}</span>`;
+        } else if (data.tipo === "image") {
+            msgDiv.innerHTML = `<img src="/static/uploads/chat/${data.message}" class="chat-img">`;
+        } else if (data.tipo === "audio") {
+            msgDiv.innerHTML = `<audio controls src="/static/uploads/chat/${data.message}"></audio>`;
+        }
+        
+        wrapper.appendChild(msgDiv);
+        chatBox.appendChild(wrapper);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    document.getElementById('chat-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        formData.append("to", target);
+        formData.append("timestamp", Date.now());
+
+        fetch("/send_message", {
+            method: "POST",
+            body: formData
+        }).then(response => {
+            if (!response.ok) {
+                alert('Error al enviar mensaje');
+            }
+        }).catch(() => {
+            alert('Fallo de red al enviar mensaje');
+        });
+
+        document.getElementById("msg-input").value = '';
+        document.getElementById("file-input").value = '';
+    });
+</script>
+{% endblock %}

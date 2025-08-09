@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Bienvenido a HotQuiz{% endblock %}
+
+{% block content %}
+  <div class="index-container" style="text-align: center; padding: 2rem; color: #fff;">
+    <h1 style="font-size: 3rem;">🔥 HotQuiz</h1>
+    <p style="font-size: 1.2rem;">¡Bienvenido a la mejor experiencia de quizzes y confesiones!</p>
+
+    <div class="botonera" style="margin-top: 2rem;">
+      {% if not session.get('alias') %}
+        <a href="{{ url_for('login') }}" class="boton-menu" style="margin-right: 1rem; padding: 0.8rem 1.5rem; background: #ff4081; color: white; border-radius: 8px; text-decoration: none;">🔐 Iniciar sesión</a>
+        <a href="{{ url_for('registro') }}" class="boton-menu" style="padding: 0.8rem 1.5rem; background: #7c4dff; color: white; border-radius: 8px; text-decoration: none;">📝 Registrarse</a>
+      {% else %}
+        <p style="margin-top: 1.5rem;">👋 Hola, <strong>{{ session.alias }}</strong></p>
+        <a href="{{ url_for('lanzar') }}" class="boton-menu" style="margin-top: 1rem; display: inline-block; padding: 0.8rem 1.5rem; background: #00e676; color: white; border-radius: 8px; text-decoration: none;">🚀 Ir a Retos</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

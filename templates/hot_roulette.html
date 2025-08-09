@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}🔥 Hot Roulette{% endblock %}
+
+{% block content %}
+<style>
+    body { background-color: #0d0d0d; color: #fff; font-family: 'Segoe UI', sans-serif; }
+    .juego-container { max-width: 700px; margin: auto; text-align: center; padding: 20px; }
+
+    .neon-text {
+        color: #fff;
+        text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 40px #a020f0, 0 0 80px #a020f0;
+    }
+
+    #ruleta {
+        border-radius: 50%;
+        box-shadow: 0 0 20px #ff4081;
+        transition: transform 4s ease-out;
+    }
+
+    .btn-girar, .btn-publicar {
+        margin-top: 20px;
+        background: linear-gradient(45deg, #ff00ff, #a020f0);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 50px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: box-shadow 0.3s ease, transform 0.2s ease;
+    }
+    .btn-girar:hover, .btn-publicar:hover {
+        box-shadow: 0 0 20px #ff00ff;
+        transform: scale(1.05);
+    }
+
+    .btn-publicar { display: none; }
+
+    #retoBox {
+        margin-top: 20px;
+        font-size: 1.8rem;
+        font-weight: bold;
+        display: none;
+        text-shadow: 0 0 10px #00fff7;
+    }
+    
+    .reto-item {
+        background: #1a1a1a;
+        margin: 15px 0;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 0 8px rgba(160, 32, 240, 0.4);
+        position: relative;
+    }
+
+    .reto-item img {
+        max-width: 100%;
+        border-radius: 8px;
+        margin-top: 10px;
+        border: 2px solid #ff00ff;
+    }
+
+    .btn-aceptar, .btn-eliminar, .btn-reaccion {
+        background: #a020f0;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        margin-right: 5px;
+        transition: background 0.3s ease;
+    }
+    .btn-aceptar:hover { background: #ff00ff; }
+    
+    .btn-eliminar {
+        background: #d00;
+        float: right;
+        font-size: 0.8rem;
+        padding: 5px 10px;
+    }
+    .btn-eliminar:hover { background: #ff4d4d; }
+
+    .reactions-container {
+        margin-top: 10px;
+        display: flex;
+        gap: 15px;
+    }
+    .btn-reaccion { background: none; border: 2px solid #ff00ff; color: #ff00ff; }
+    .btn-reaccion.dislike { color: #ff9800; border-color: #ff9800; }
+    .btn-reaccion:hover { background: #ff00ff; color: white; }
+    .btn-reaccion.dislike:hover { background: #ff9800; color: white; }
+    .btn-subir-imagen {
+        background: #4caf50;
+        color: white;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 5px;
+    }
+    .btn-subir-imagen:hover { background: #66bb6a; }
+</style>
+
+<div class="juego-container">
+    <h2 class="neon-text">🔥 Hot Roulette</h2>
+    <p>Gira la ruleta y acepta un reto, o cumple el reto de otro para ganar puntos.</p>
+
+    <canvas id="ruleta" width="300" height="300"></canvas>
+    <button id="btnGirar" class="btn-girar">🎯 Girar</button>
+
+    <div id="retoBox" class="neon-text"></div>
+    <button id="btnPublicarReto" class="btn-publicar">✅ Publicar Reto</button>
+
+    <a href="{{ url_for('jugar') }}" class="boton-menu" style="margin: 1.5rem 0; display: inline-block; width: 180px;">🎮 Volver a Juegos</a>
+
+    <div style="margin-top:30px; width:100%; max-width:500px;">
+        <h3 class="neon-text">🔥 Últimas Publicaciones</h3>
+        <ul id="listaRetos" style="list-style:none; padding:0;">
+            {% for pub in publicaciones %}
+                <li class="reto-item">
+                    <strong>{{ pub.usuario }}</strong>: {{ pub.reto }}
+                    {% if pub.cumplido_por == alias %}
+                        <button onclick="eliminarRetoCumplido('{{ pub._id }}')" class="btn-eliminar">❌ Eliminar</button>
+                    {% endif %}
+
+                    {% if pub.aceptado_por %}
+                        <p style="color:#0f0; font-size: 0.9em; margin-top: 5px;">🫡 Aceptado por {{ pub.aceptado_por }}</p>
+                    {% else %}
+                        <button onclick="aceptarReto('{{ pub._id }}')" class="btn-aceptar">🫡 Aceptar</button>
+                    {% endif %}
+
+                    {% if pub.cumplido_por %}
+                        <p style="color:#00fff7; font-size: 0.9em; margin-top: 5px;">🎉 Cumplido por {{ pub.cumplido_por }}</p>
+                        <img src="{{ url_for('static', filename=pub.imagen_cumplimiento) }}">
+                    {% elif pub.aceptado_por == alias %}
+                        <div style="margin-top:10px;">
+                            <label style="display:block; margin-bottom:5px;">📷 Sube tu foto como prueba:</label>
+                            <input type="file" accept="image/*" id="file-{{ pub._id }}">
+                            <button onclick="subirImagenCumplida('{{ pub._id }}')" class="btn-subir-imagen">Subir Prueba</button>
+                        </div>
+                    {% endif %}
+
+                    <div class="reactions-container">
+                        <button onclick="reaccion('{{ pub._id }}', 'like')" class="btn-reaccion">❤️ {{ pub.likes }}</button>
+                        <button onclick="reaccion('{{ pub._id }}', 'dislike')" class="btn-reaccion dislike">😡 {{ pub.dislikes }}</button>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<script>
+const retos = {{ retos|tojson }};
+const canvas = document.getElementById("ruleta");
+const ctx = canvas.getContext("2d");
+const btnGirar = document.getElementById("btnGirar");
+const btnPublicar = document.getElementById("btnPublicarReto");
+const retoBox = document.getElementById("retoBox");
+let retoActual = "";
+const colores = ["#ff00ff", "#a020f0", "#ff4081", "#4caf50", "#00fff7", "#ff9800"];
+
+function dibujarRuleta() {
+    const numSectores = retos.length;
+    const anguloSector = (2 * Math.PI) / numSectores;
+    for (let i = 0; i < numSectores; i++) {
+        ctx.beginPath();
+        ctx.moveTo(150, 150);
+        ctx.arc(150, 150, 150, i * anguloSector, (i + 1) * anguloSector);
+        ctx.fillStyle = colores[i % colores.length];
+        ctx.fill();
+        ctx.stroke();
+        ctx.save();
+        ctx.translate(150, 150);
+        ctx.rotate(i * anguloSector + anguloSector / 2);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px Arial";
+        ctx.fillText(retos[i].slice(0, 16) + "...", 80, 0);
+        ctx.restore();
+    }
+}
+dibujarRuleta();
+
+btnGirar.addEventListener("click", () => {
+    fetch("/hot_roulette/girar", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) return alert(data.error);
+        retoActual = data.reto;
+        retoBox.innerText = "🔥 " + retoActual;
+        retoBox.style.display = "block";
+        btnPublicar.style.display = "inline-block";
+        let angle = Math.random() * 360 + 720;
+        canvas.style.transition = "transform 4s ease-out";
+        canvas.style.transform = `rotate(${angle}deg)`;
+    });
+});
+
+btnPublicar.addEventListener("click", () => {
+    fetch("/hot_roulette/publicar_reto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reto: retoActual })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    });
+});
+
+function reaccion(id, tipo) {
+    fetch("/hot_roulette/reaccion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retoId: id, tipo: tipo })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+// 💡 CORRECCIÓN: Ahora llama a la nueva ruta "aceptar_reto_roulette"
+function aceptarReto(id) {
+    fetch("/hot_roulette/aceptar_reto_roulette", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retoId: id })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    });
+}
+
+function subirImagenCumplida(retoId) {
+    const fileInput = document.getElementById('file-' + retoId);
+    const file = fileInput.files[0];
+    if (!file) {
+        alert("Selecciona una imagen para subir.");
+        return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = function () {
+        fetch("/hot_roulette/cumplir_reto", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ retoId: retoId, imagen: reader.result })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) location.reload();
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function eliminarRetoCumplido(retoId) {
+    if (confirm("¿Estás seguro de que quieres eliminar esta publicación?")) {
+        fetch("/hot_roulette/eliminar_cumplido", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ retoId: retoId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) location.reload();
+        });
+    }
+}
+</script>
+{% endblock %}

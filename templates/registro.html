@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Registro | HotQuiz{% endblock %}
+
+{% block content %}
+
+<div style="max-width: 420px; margin: 100px auto; padding: 2rem; background: rgba(255, 0, 128, 0.05); border-radius: 20px; box-shadow: 0 0 25px #ff00aa;">
+    <h1 style="color: #ff77a9; text-align: center; text-shadow: 0 0 15px #ff4081; font-size: 1.8rem; font-weight: bold;">
+        📝 Registro de Usuario
+    </h1>
+
+    <form method="POST" action="{{ url_for('registro') }}" id="registro-form" style="margin-top: 2rem;">
+        <label for="alias" style="color: #ff99cc; font-weight: 700;">Alias:</label>
+        <input 
+            type="text" 
+            id="alias" 
+            name="alias" 
+            placeholder="Tu alias" 
+            required 
+            autocomplete="off"
+            autofocus
+            style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;"
+        >
+
+        <label for="email" style="color: #ff99cc; font-weight: 700;">Correo electrónico:</label>
+        <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            placeholder="correo@ejemplo.com" 
+            required 
+            autocomplete="email"
+            style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;"
+        >
+
+        <label for="password" style="color: #ff99cc; font-weight: 700;">Contraseña:</label>
+        <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            placeholder="********" 
+            required 
+            autocomplete="new-password"
+            style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;"
+        >
+
+        <div style="margin-bottom: 15px; font-size: 0.95rem; color: #ccc;">
+            <label>
+                <input type="checkbox" name="acepta_terminos" required>
+                Acepto los 
+                <a href="{{ url_for('terminos') }}" target="_blank" style="color: #ff66cc; text-decoration: underline;">Términos y Condiciones</a>
+            </label>
+        </div>
+
+        <div style="margin-bottom: 20px; font-size: 0.95rem; color: #ccc;">
+            <label>
+                <input type="checkbox" name="acepta_privacidad" required>
+                He leído la 
+                <a href="{{ url_for('privacidad') }}" target="_blank" style="color: #ff66cc; text-decoration: underline;">Política de Privacidad</a>
+            </label>
+        </div>
+
+        <button type="submit" style="width: 100%; padding: 14px; background: linear-gradient(90deg, #ff4d94, #a64dff); color: white; font-weight: bold; border: none; border-radius: 12px; box-shadow: 0 0 15px #ff4d94; font-size: 1rem; transition: transform 0.2s;">
+            🚀 Registrarse
+        </button>
+    </form>
+
+    <p style="margin-top: 1.5rem; color: #ff99cc; font-weight: 600; text-align: center;">
+        ¿Ya tienes cuenta? 
+        <a href="{{ url_for('login') }}" style="display: inline-block; font-weight: bold; color: #fff; background: linear-gradient(90deg, #4d94ff, #77a9ff); padding: 10px 18px; border-radius: 10px; text-decoration: none; box-shadow: 0 0 15px #4d94ff; margin-top: 10px;">
+            Inicia sesión
+        </a>
+    </p>
+</div>
+{% endblock %}

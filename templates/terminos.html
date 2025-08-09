@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Términos y Condiciones | HotQuiz{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        background: linear-gradient(135deg, #1e0a3b, #4a1f6a, #d4278a);
+    }
+    
+    .card-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .neon-card {
+        max-width: 600px;
+        width: 100%;
+        background: rgba(255, 0, 128, 0.05);
+        border-radius: 20px;
+        box-shadow: 0 0 25px #ff00aa;
+        padding: 2rem;
+        border: 2px solid #ff66b2;
+        color: #e0e0e0;
+    }
+
+    .neon-card h1 {
+        text-align: center;
+        color: #ff66b2;
+        text-shadow: 0 0 15px #ff66b2;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .scroll-content {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-right: 15px;
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    .scroll-content h2 {
+        color: #ff99cc;
+        text-shadow: 0 0 8px #ff99cc;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.2rem;
+    }
+
+    .scroll-content p {
+        margin-bottom: 1rem;
+    }
+
+    .scroll-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .scroll-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+
+    .scroll-content::-webkit-scrollbar-thumb {
+        background-color: #ff66b2;
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+    }
+</style>
+
+<div class="card-container">
+    <div class="neon-card">
+        <h1>Términos y Condiciones de Uso – HotQuiz</h1>
+        <div class="scroll-content">
+            <p><strong>Última actualización: 30 de julio de 2025</strong></p>
+            <p>Al registrarte y usar HotQuiz, aceptas cumplir los presentes Términos y Condiciones. Si no estás de acuerdo, no uses la plataforma.</p>
+            <hr>
+            <h2>1. Requisitos de edad</h2>
+            <p>HotQuiz es una plataforma para mayores de 18 años.</p>
+            <p>Se prohíbe el registro y uso por parte de menores.</p>
+            <p>Podemos solicitar verificación de edad en cualquier momento.</p>
+            <hr>
+            <h2>2. Registro y cuenta</h2>
+            <p>Debes proporcionar información veraz y actualizada.</p>
+            <p>Eres responsable de mantener la confidencialidad de tu contraseña.</p>
+            <p>No está permitido crear múltiples cuentas con el objetivo de evadir reglas o beneficios.</p>
+            <hr>
+            <h2>3. Contenido permitido</h2>
+            <p>Videos cortos tipo HotShorts, fotos, animaciones y otro material visual.</p>
+            <p>Contenido +18 moderado como trajes de baño, lencería ligera, moda sexy.</p>
+            <p>Anime, música, deportes, humor y otras categorías aprobadas.</p>
+            <hr>
+            <h2>4. Contenido prohibido</h2>
+            <p>Queda prohibido:</p>
+            <ul>
+                <li>Pornografía o contenido sexual explícito.</li>
+                <li>Contenido sexual con menores de edad (ilegal y denunciado).</li>
+                <li>Violencia extrema, discursos de odio o amenazas.</li>
+                <li>Contenido que infrinja derechos de autor sin permiso.</li>
+                <li>Spam o enlaces maliciosos.</li>
+            </ul>
+            <hr>
+            <h2>5. Propiedad del contenido</h2>
+            <p>Mantienes la propiedad de tu contenido, pero otorgas a HotQuiz una licencia no exclusiva, mundial, gratuita y sublicenciable para mostrarlo dentro de la plataforma.</p>
+            <p>HotQuiz puede eliminar contenido que infrinja estos términos.</p>
+            <hr>
+            <h2>6. Tokens Oro</h2>
+            <p>Los Tokens Oro son recompensas virtuales obtenidas por interacción en la plataforma.</p>
+            <p>Los Tokens Oro pueden canjearse por dinero real solo si cumples:</p>
+            <ol>
+                <li>Monto mínimo de retiro.</li>
+                <li>Verificación de identidad con documento oficial y fotografía.</li>
+                <li>Cumplir todas las reglas de la plataforma.</li>
+            </ol>
+            <p>HotQuiz puede retener o cancelar pagos en caso de fraude o actividad sospechosa.</p>
+            <hr>
+            <h2>7. Retiro de Tokens Oro</h2>
+            <p>El retiro se procesa a través de métodos aprobados (PayPal, transferencia bancaria, Mercado Pago, etc.).</p>
+            <p>Los pagos pueden tardar hasta 15 días hábiles desde la aprobación.</p>
+            <p>No se aceptan retiros por cuentas o métodos de pago a nombre de terceros.</p>
+            <hr>
+            <h2>8. Suspensión y cierre de cuenta</h2>
+            <p>Podemos suspender o cerrar tu cuenta si:</p>
+            <ul>
+                <li>Incumples estos términos.</li>
+                <li>Subes contenido prohibido.</li>
+                <li>Se detecta fraude, spam o actividad ilegal.</li>
+                <li>No verificas tu identidad cuando es requerida.</li>
+            </ul>
+            <hr>
+            <h2>9. Limitación de responsabilidad</h2>
+            <p>HotQuiz no es responsable del contenido que suban los usuarios.</p>
+            <p>No garantizamos que la plataforma esté libre de errores o interrupciones.</p>
+            <p>El uso de la plataforma es bajo tu propio riesgo.</p>
+            <hr>
+            <h2>10. Cambios en los términos</h2>
+            <p>Podemos modificar estos términos en cualquier momento. Los cambios entrarán en vigor al ser publicados en la plataforma.</p>
+            <hr>
+            <h2>11. Contacto</h2>
+            <p>📧 soporte@hotquiz.com</p>
+            <p>michel86432@gmail.com</p>
+            <p>tel.7445524720</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

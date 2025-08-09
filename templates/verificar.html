@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Verificar identidad{% endblock %}
+
+{% block content %}
+<div class="verificacion-box">
+    <h2>🔒 Verificación de identidad</h2>
+    <p>Completa este formulario para poder retirar tus tokens. Solo es necesario hacerlo <b>una vez</b>.</p>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="nombre">👤 Nombre completo:</label>
+            <input type="text" name="nombre" required>
+        </div>
+
+        <div class="form-group">
+            <label for="cuenta_bancaria">🏦 Cuenta bancaria (CLABE o tarjeta):</label>
+            <input type="text" name="cuenta_bancaria" required>
+        </div>
+
+        <div class="form-group">
+            <label for="correo">📧 Correo electrónico:</label>
+            <input type="email" name="correo" required>
+        </div>
+
+        <hr class="divider">
+
+        <div class="form-group">
+            <label for="ine_frontal">🪪 Foto frontal de INE:</label>
+            <input type="file" name="ine_frontal" accept=".png,.jpg,.jpeg" required>
+        </div>
+
+        <div class="form-group">
+            <label for="ine_trasera">🪪 Foto trasera de INE:</label>
+            <input type="file" name="ine_trasera" accept=".png,.jpg,.jpeg" required>
+        </div>
+
+        <div class="form-group">
+            <label for="selfie_ine">🤳 Selfie sosteniendo tu INE:</label>
+            <input type="file" name="selfie_ine" accept=".png,.jpg,.jpeg" required>
+        </div>
+
+        <div class="submit-btn-container">
+            <button type="submit">✅ Enviar verificación</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.verificacion-box {
+    max-width: 600px;
+    margin: 60px auto;
+    padding: 35px 30px;
+    background: #111;
+    color: #fff;
+    border-radius: 16px;
+    box-shadow: 0 0 25px #00ffff80;
+    font-family: 'Segoe UI', sans-serif;
+    animation: fadeIn 0.5s ease;
+}
+
+.verificacion-box h2 {
+    text-align: center;
+    color: #00ffff;
+    text-shadow: 0 0 10px #0ff;
+    margin-bottom: 10px;
+}
+
+.verificacion-box p {
+    text-align: center;
+    font-size: 14px;
+    color: #ccc;
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #ff77dd;
+    text-shadow: 0 0 5px #ff77ddaa;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="file"] {
+    padding: 10px;
+    background: #1a1a1a;
+    border: 1px solid #00ffff88;
+    border-radius: 10px;
+    color: #fff;
+    box-shadow: inset 0 0 8px #00ffff33;
+    transition: 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #0ff;
+    box-shadow: 0 0 8px #00ffffaa;
+}
+
+.divider {
+    border: none;
+    border-top: 1px solid #00ffff55;
+    margin: 25px 0;
+}
+
+.submit-btn-container {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.submit-btn-container button {
+    background: #00ffff;
+    color: #000;
+    font-weight: bold;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 0 12px #00ffffaa;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s;
+}
+
+.submit-btn-container button:hover {
+    background: #00e6e6;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px #0ff, 0 0 40px #0ff;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

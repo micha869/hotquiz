@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}🎹 Susurra y Gana | HotQuiz{% endblock %}
+
+{% block content %}
+<div class="juego-container" style="max-width: 700px; margin: auto; color: #fff; text-align: center;">
+    <h2 class="titulo-neon" style="margin-bottom: 1rem; color: #ff33cc; text-shadow: 0 0 10px #ff33cc, 0 0 20px #cc00ff;">🎹 Susurra y Gana</h2>
+    <p style="color: #f0f0f0;">💰 Oro: {{ tokens_oro }} | 🥈 Plata: {{ tokens_plata }}</p>
+    <p style="color: #e0e0e0;">Sube un audio sensual y deja que el público vote y reaccione 🔥</p>
+    <a href="{{ url_for('jugar') }}" class="boton-futurista" style="margin-bottom: 1.5rem; background: #9933ff;">🎮 Volver a Juegos</a>
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div style="margin: 1rem 0; padding: 1rem; background: #330066; border: 1px solid #cc00ff; border-radius: 8px;">
+        {% for message in messages %}
+        <p style="color: #ff99ff;">{{ message }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('audio_hot') }}" method="POST" enctype="multipart/form-data"
+        style="background:#29004d; padding:20px; border-radius:12px; margin: 2rem 0; box-shadow: 0 0 15px #ff33cc;">
+        <h3 style="color: #ff99ff;">📄 Subir audio</h3>
+
+        <input type="file" name="audio" accept="audio/*" required
+                style="width: 100%; padding:10px; border-radius:8px; background:#330066; color:#fff; border:1px solid #ff33cc; margin-bottom:10px;">
+
+        <textarea name="descripcion" placeholder="Describe brevemente tu audio..." rows="3" required
+                    style="width: 100%; padding:10px; border-radius:8px; background:#330066; color:#fff; border:1px solid #ff33cc; margin-bottom:10px; resize:none;"></textarea>
+
+        <button type="submit" class="boton-futurista" style="background:#ff33cc; color:#fff;">
+            Enviar Audio 🎧
+        </button>
+    </form>
+
+    <div style="background:#1a1a33; padding:20px; border-radius:12px; box-shadow: 0 0 10px #9933ff;">
+        <h3 style="color: #00ffff;">🎧 Audios en competencia</h3>
+        {% if pistas %}
+        <ul style="list-style:none; padding-left: 0;">
+            {% for pista in pistas %}
+            <li style="margin-bottom: 2rem; background:#220044; padding:15px; border-radius:10px; border: 1px solid #ff33cc; box-shadow: 0 0 5px #ff33cc;">
+                <strong style="color: #00ffff;">{{ pista.user }}</strong><br>
+                <p style="color:#ff99ff;">💰 Tokens recibidos: {{ tokens_por_usuario.get(pista.user, 0) }}</p>
+
+                <audio controls style="width:100%; margin-top: 0.5rem; background: #333; border-radius: 50px;">
+                    <source src="{{ url_for('static', filename=pista.audio) }}" type="audio/mpeg">
+                    Tu navegador no soporta <code>audio</code>.
+                </audio>
+                <p style="color:#ccc;">🗳️ Votos: {{ pista.votos|default(0) }}</p>
+
+                <div class="reacciones-futuristas">
+                    {% for tipo, emoji in [('like','👍'),('love','❤️'),('hot','🔥'),('wow','😮')] %}
+                        <form method="POST" action="{{ url_for('reaccion_audio', audio_id=pista._id, tipo=tipo) }}" style="display:inline;">
+                            <button type="submit" class="emoji-btn">{{ emoji }}</button>
+                        </form>
+                    {% endfor %}
+                </div>
+
+                <div style="margin-top: 5px; font-size: 0.9rem; color:#aaa;">
+                    {% set reaccion_count = {} %}
+                    {% for reaccion in pista.reacciones %}
+                    {% set tipo = reaccion.tipo %}
+                    {% set reaccion_count = reaccion_count.update({tipo: reaccion_count.get(tipo, 0) + 1}) or reaccion_count %}
+                    {% endfor %}
+                    👍 {{ reaccion_count['like']|default(0) }}
+                    ❤️ {{ reaccion_count['love']|default(0) }}
+                    🔥 {{ reaccion_count['hot']|default(0) }}
+                    😮 {{ reaccion_count['wow']|default(0) }}
+                </div>
+
+                {% if alias != pista.user %}
+                <form method="POST" action="{{ url_for('apoyar_audio') }}" style="display: inline; margin-top: 10px;">
+                    <input type="hidden" name="autor" value="{{ pista.user }}">
+                    <button type="submit" class="boton-apoyo">
+                        💎 Apoyar con Token
+                    </button>
+                </form>
+                {% else %}
+                <p style="color: #999; font-style: italic; margin-top: 10px;">(No puedes apoyarte a ti mismo)</p>
+                {% endif %}
+
+                {% if pista.user == alias %}
+                <form action="{{ url_for('audio_hot_eliminar_reto', audio_id=pista._id) }}" method="POST" style="margin-top: 10px;">
+                    <button type="submit" class="boton-futurista" style="background:red; color:white; padding:5px 10px;">❌ Eliminar audio</button>
+                </form>
+                {% endif %}
+
+                <div style="margin-top: 15px; text-align: left;">
+                    <h4 style="color:#ff77aa; margin-bottom: 8px;">💬 Comentarios</h4>
+                    <div style="max-height: 150px; overflow-y: auto; background: #330066; padding: 10px; border-radius: 10px; border: 1px solid #cc00ff;">
+                        {% for comentario in pista.comentarios %}
+                        <div style="margin-bottom: 6px; font-size: 0.9rem; color:#f0d0e9;">
+                            <strong>{{ comentario.usuario }}</strong>: {{ comentario.comentario }}
+                        </div>
+                        {% else %}
+                        <p style="color:#ccc; font-style: italic;">Sin comentarios aún</p>
+                        {% endfor %}
+                    </div>
+
+                    <form action="{{ url_for('comentar_audio', audio_id=pista._id) }}" method="POST"
+                            style="margin-top: 10px; display: flex; gap: 10px;">
+                        <input type="text" name="comentario" placeholder="Escribe un comentario..." required
+                                style="flex: 1; padding: 8px; border-radius: 10px; background:#330066; border:1px solid #ff33cc; color:#fff;">
+                        <button type="submit" class="boton-futurista" style="background:#4caf50;">
+                            Enviar
+                        </button>
+                    </form>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="color:#ccc;">Aún no hay audios. Sé el primero en participar 🔥</p>
+        {% endif %}
+    </div>
+
+    <div style="margin-top: 3rem; background:#1a1a33; padding:20px; border-radius:12px; box-shadow: 0 0 10px #9933ff;">
+        <h3 style="color:#ff77aa;">📜 Últimos apoyos</h3>
+        {% if historial %}
+        <table style="width:100%; border-collapse:collapse; color:#fff; font-size: 0.95rem;">
+            <thead>
+                <tr style="background:#330066; border-bottom: 2px solid #ff33cc;">
+                    <th style="padding:10px;">De</th>
+                    <th style="padding:10px;">Para</th>
+                    <th style="padding:10px;">Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for donacion in historial %}
+                <tr style="border-bottom:1px solid #444;">
+                    <td style="padding:8px;">{{ donacion.de }}</td>
+                    <td style="padding:8px;">{{ donacion.para }}</td>
+                    <td style="padding:8px;">{{ donacion.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:#ccc;">Aún no hay donaciones registradas.</p>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('inicio') }}" style="color:#ff4081; display: inline-block; margin-top: 2rem; text-decoration: none;">⬅️ Volver al menú</a>
+</div>
+
+<style>
+/* Estilos generales y neón */
+:root {
+    --color-neon-pink: #ff33cc;
+    --color-neon-purple: #9933ff;
+    --color-neon-aqua: #00ffff;
+    --color-text-light: #f0f0f0;
+    --color-bg-dark: #1a0033;
+    --color-bg-card-dark: #29004d;
+}
+.titulo-neon {
+    text-align: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--color-neon-pink);
+    text-shadow: 0 0 10px var(--color-neon-pink), 0 0 20px var(--color-neon-purple);
+}
+.boton-futurista {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 25px;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-decoration: none;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s ease;
+    cursor: pointer;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+}
+.boton-futurista:hover {
+    transform: translateY(-2px);
+}
+.boton-apoyo {
+    background: linear-gradient(to right, gold, orange);
+    color: white;
+    font-weight: bold;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.boton-apoyo:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+/* Estilos para las reacciones (futuristas) */
+.reacciones-futuristas {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.reacciones-futuristas .emoji-btn {
+    background: transparent;
+    border: 2px solid #ff33cc;
+    padding: 8px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #ff33cc;
+    transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+    box-shadow: 0 0 5px #ff33cc;
+}
+.reacciones-futuristas .emoji-btn:hover {
+    background: #ff33cc;
+    color: #000;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px #ff33cc;
+}
+</style>
+{% endblock %}

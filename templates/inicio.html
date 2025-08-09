@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Iniciar Sesión | HotQuiz{% endblock %}
+
+{% block content %}
+
+<style>
+    /* ==== RESET ==== */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: linear-gradient(135deg, #1e0a3b, #4a1f6a, #d4278a);
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        min-height: 100vh;
+    }
+
+    /* ==== HEADER ==== */
+    .top-banner {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        background: linear-gradient(90deg, #d4278a, #ff66b2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 2px 8px rgba(212, 39, 138, 0.6);
+        z-index: 10000;
+    }
+
+    .top-banner .logo {
+        font-size: 1.4rem;
+    }
+
+    .top-banner .menu-icon {
+        display: none;
+        font-size: 1.8rem;
+        cursor: pointer;
+    }
+
+    /* ==== NAV ==== */
+    .nav-links {
+        display: flex;
+        gap: 20px;
+    }
+
+    .nav-links a {
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 8px 15px;
+        border-radius: 20px;
+        transition: 0.3s;
+    }
+
+    .nav-links a:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    /* ==== CONTENEDOR PRINCIPAL ==== */
+    .inicio-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 90vh;
+        text-align: center;
+        padding-top: 80px; /* espacio para header */
+    }
+
+    .titulo {
+        font-size: 2.5rem;
+        margin-bottom: 30px;
+        color: #ff66b2;
+        text-shadow: 0 0 10px #ff66b2;
+    }
+
+    .bienvenida {
+        font-size: 1.2rem;
+        margin-bottom: 40px;
+        color: #fff;
+    }
+
+    /* ==== BOTONERA NEÓN ==== */
+    .botonera {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        max-width: 400px;
+        width: 90%;
+    }
+
+    .boton-menu {
+        background: #1e0a3b;
+        color: #ff66b2;
+        padding: 15px 25px;
+        border: 2px solid #ff66b2;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        text-decoration: none;
+        text-align: center;
+        box-shadow: 0 0 15px #ff66b2;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        width: 100%;
+    }
+
+    .boton-menu:hover {
+        transform: scale(1.03);
+        box-shadow: 0 0 25px #ff66b2;
+        background: #4a1f6a;
+    }
+
+    .boton-menu i {
+        margin-right: 10px;
+        font-size: 1.2rem;
+        vertical-align: middle;
+    }
+
+    /* ==== RESPONSIVE ==== */
+    @media (max-width: 768px) {
+        .nav-links {
+            display: none;
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            flex-direction: column;
+            background: #1e0a3b;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+            gap: 10px;
+        }
+
+        .nav-links.show {
+            display: flex;
+        }
+
+        .top-banner .menu-icon {
+            display: block;
+        }
+
+        .botonera {
+            max-width: 300px;
+        }
+
+        .boton-menu {
+            font-size: 1rem;
+            padding: 12px 20px;
+        }
+
+        .boton-menu i {
+            font-size: 1.1rem;
+        }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .botonera {
+            max-width: 600px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+    }
+</style>
+
+
+<header class="top-banner">
+    <div class="logo">🔥 HotQuiz</div>
+    <div class="menu-icon" onclick="toggleMenu()">☰</div>
+    <nav class="nav-links" id="navMenu">
+        <a href="{{ url_for('jugar') }}">🔥 Jugar</a>
+        <a href="{{ url_for('confesiones') }}">📖 Confesiones</a>
+        <a href="{{ url_for('audio_hot') }}">🎧 Audios</a>
+        <a href="{{ url_for('perfiles') }}">🧑‍🤝‍🧑 Perfiles</a>
+        <a href="{{ url_for('tokens') }}">🎁 Tokens</a>
+        <a href="{{ url_for('salir') }}">🚪 Salir</a>
+    </nav>
+</header>
+
+
+<div class="inicio-container">
+    <h1 class="titulo">🔥 HotQuiz</h1>
+    <p class="bienvenida">Bienvenido, {{ alias }}!</p>
+
+    <div class="botonera">
+        <a href="{{ url_for('jugar') }}" class="boton-menu"><i class="fas fa-gamepad"></i> Jugar HotQuiz</a>
+        <a href="{{ url_for('confesiones') }}" class="boton-menu"><i class="fas fa-heart"></i> Leer Confesiones</a>
+        <a href="{{ url_for('hot_shorts') }}" class="boton-menu"><i class="fas fa-film"></i> Ver HotShorts</a>
+        <a href="{{ url_for('audio_hot') }}" class="boton-menu"><i class="fas fa-headphones"></i> Audios Hot</a>
+        <a href="{{ url_for('perfiles') }}" class="boton-menu"><i class="fas fa-users"></i> Ver Perfiles</a>
+        <a href="{{ url_for('tokens') }}" class="boton-menu"><i class="fas fa-coins"></i> Comprar Tokens</a>
+        <a href="{{ url_for('salir') }}" class="boton-menu"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+    </div>
+</div>
+
+<script>
+    function toggleMenu() {
+        document.getElementById('navMenu').classList.toggle('show');
+    }
+</script>
+
+{% endblock %}

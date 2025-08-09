@@ -1,0 +1,25 @@
+# Archivos de entorno y de configuración
+.env
+__pycache__/
+
+# Carpetas y archivos de entorno virtual
+venv/
+*.pyc
+
+# Archivos de caché y temporales
+*.log
+.DS_Store
+
+# Archivos generados por Flask
+/static/comprobantes/
+/static/avatars/
+/static/uploads/chat/
+/static/uploads
+/static/uploads/confesiones_media
+/static/uploads/sounds
+/static/uploads/foto_hot
+/static/uploads/hot_roulette
+/static/uploads/videos
+/static/uploads/hotcopy
+/static/uploads/audios 
+/static/verificaciones/

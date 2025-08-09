@@ -1,0 +1,51 @@
+<div class="confesion-card" id="conf-{{ conf._id }}" style="background: {{ conf.color or '#222' }};">
+    <div class="card-header">
+        <div class="user-info">
+            <h5 class="user-name">{{ conf.usuario or 'Anónimo' }}</h5>
+            <p style="font-size: 0.8em; color: #aaa;">{{ conf.fecha.strftime("%d/%m/%Y %H:%M") if conf.fecha else '' }}</p>
+        </div>
+    </div>
+
+    <p class="confesion-text">{{ conf.texto }}</p>
+
+    {% if conf.imagen %}
+    <div class="conf-media-container">
+        <img class="conf-image" src="{{ url_for('static', filename=conf.imagen) }}" alt="Imagen de la confesión">
+    </div>
+    {% endif %}
+
+    {% if conf.audio %}
+    <div class="conf-media-container">
+        <audio controls class="audio-player" preload="none">
+            <source src="{{ url_for('static', filename=conf.audio) }}" type="audio/{{ conf.audio.rsplit('.', 1)[1].lower() }}">
+            Tu navegador no soporta el elemento de audio.
+        </audio>
+    </div>
+    {% endif %}
+
+    <div class="reacciones">
+        {% for tipo, cantidad in conf.reacciones.items() %}
+        <button class="emoji-btn" data-conf-id="{{ conf._id }}" data-tipo="{{ tipo }}">
+            {{ tipo }} <span id="reaccion-{{ conf._id }}-{{ tipo }}">{{ cantidad }}</span>
+        </button>
+        {% endfor %}
+    </div>
+
+    <div id="comentarios-{{ conf._id }}" class="comentarios-container">
+        {% for comentario in conf.comentarios %}
+        <div class="comentario-item">
+            <div class="comentario-info">
+                <p><b>{{ comentario.usuario or 'Anónimo' }}:</b> {{ comentario.texto }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="comentario-box">
+        <input type="text" id="comentario-{{ conf._id }}" placeholder="Escribe un comentario...">
+        <button class="enviar-btn" data-conf-id="{{ conf._id }}" title="Enviar comentario">📩</button>
+        {% if alias == conf.usuario %}
+        <button class="eliminar-btn" data-conf-id="{{ conf._id }}" title="Eliminar confesión">🗑</button>
+        {% endif %}
+    </div>
+</div>

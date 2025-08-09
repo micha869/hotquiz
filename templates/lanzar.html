@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}🎯 Lanzar Reto - HotQuiz{% endblock %}
+
+{% block content %}
+<div class="container-reto">
+    <h1 class="titulo-neon">🎯 Lanzar un reto</h1>
+    <p class="saldo-info">💰 <strong>Saldo:</strong> <span class="saldo-valor">{{ saldo }}</span> tokens oro</p>
+    <a href="{{ url_for('jugar') }}" class="boton-futurista boton-menu">🎮 Volver a Juegos</a>
+    
+    <form action="{{ url_for('lanzar') }}" method="POST" class="formulario tarjeta-futurista">
+        <input type="text" name="pregunta" placeholder="📝 Escribe tu pregunta..." class="input-futurista" required>
+        <input type="text" name="retado" placeholder="👤 Alias del retado" class="input-futurista" required>
+        <select name="modo" class="input-futurista" required>
+            <option value="">🎛️ Selecciona un modo</option>
+            <option value="publico">🌐 Público</option>
+            <option value="privado">🔒 Privado</option>
+        </select>
+        <input type="number" name="tokens" placeholder="🎲 Tokens a apostar" min="1" max="{{ saldo }}" class="input-futurista" required>
+        <button type="submit" class="boton-futurista boton-lanzar">🚀 Lanzar Reto</button>
+    </form>
+
+    {% if retos_publicos %}
+    <h2 class="subtitulo-neon">🌐 Retos Públicos Disponibles</h2>
+    <ul class="retos-lista">
+        {% for reto in retos_publicos %}
+        <li class="reto-item tarjeta-futurista">
+            <p class="pregunta-reto">“{{ reto.pregunta }}”</p>
+            <span class="reto-info-texto">({{ reto.player }} vs {{ reto.retado }}) - <b>{{ reto.tokens }}</b> tokens</span>
+
+            {% if alias != reto.player and alias != reto.retado and reto.estado == "pendiente" %}
+            <form action="{{ url_for('votar_reto', reto_id=reto._id) }}" method="POST" class="votar-form">
+                <button name="ganador" value="{{ reto.player }}" class="boton-votar">✅ {{ reto.player }}</button>
+                <button name="ganador" value="{{ reto.retado }}" class="boton-votar">✅ {{ reto.retado }}</button>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if retos %}
+    <h2 class="subtitulo-neon">📜 Mis Retos</h2>
+    <ul class="retos-lista">
+        {% for reto in retos %}
+        <li class="reto-item tarjeta-futurista">
+            <p class="pregunta-reto">“{{ reto.pregunta }}”</p>
+            <span class="reto-info-texto">🎯 Contra: <b>{{ reto.retado }}</b> | 🎲 {{ reto.tokens }} tokens | 📝 Estado: {{ reto.estado }}</span>
+            
+            {% if reto.estado == "pendiente" %}
+            <form action="{{ url_for('eliminar_reto', reto_id=reto._id) }}" method="POST" class="eliminar-form">
+                <button type="submit" class="boton-futurista boton-cancelar">❌ Cancelar</button>
+            </form>
+            {% endif %}
+
+            {% if reto.estado == "ganador: " ~ alias %}
+            <form action="{{ url_for('reclamar_victoria', reto_id=reto._id) }}" method="POST" class="reclamar-form">
+                <button type="submit" class="boton-futurista boton-reclamar">🎉 Reclamar Victoria</button>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if retos_recibidos %}
+    <h2 class="subtitulo-neon">📥 Retos Recibidos</h2>
+    <ul class="retos-lista">
+        {% for reto in retos_recibidos %}
+        <li class="reto-item tarjeta-futurista">
+            <p class="pregunta-reto">“{{ reto.pregunta }}”</p>
+            <span class="reto-info-texto">📨 De: <b>{{ reto.player }}</b> | 🎲 {{ reto.tokens }} tokens | 📝 Estado: {{ reto.estado }}</span>
+            
+            {% if reto.estado == "pendiente" %}
+            <form action="{{ url_for('aceptar_reto', reto_id=reto._id) }}" method="POST" class="aceptar-form">
+                <button type="submit" class="boton-futurista boton-aceptar">✅ Aceptar Reto</button>
+            </form>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div> 
+
+<style>
+    :root {
+        --color-neon-pink: #ff33cc;
+        --color-neon-purple: #9933ff;
+        --color-neon-aqua: #00ffff;
+        --color-text-light: #f0f0f0;
+        --color-bg-dark: #1a0033;
+        --color-bg-card-dark: #29004d;
+    }
+
+    body {
+        background: var(--color-bg-dark);
+        color: var(--color-text-light);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+    }
+
+    .container-reto {
+        max-width: 700px;
+        margin: auto;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .titulo-neon {
+        text-align: center;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--color-neon-aqua);
+        text-shadow: 0 0 10px var(--color-neon-aqua), 0 0 20px var(--color-neon-purple);
+        margin-bottom: 1rem;
+    }
+
+    .subtitulo-neon {
+        color: var(--color-neon-pink);
+        text-shadow: 0 0 8px var(--color-neon-pink);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .saldo-info {
+        color: var(--color-text-light);
+        font-size: 1.1em;
+    }
+
+    .saldo-valor {
+        color: gold;
+        text-shadow: 0 0 5px gold;
+    }
+
+    /* Formularios y elementos de entrada */
+    .formulario {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 2rem;
+    }
+
+    .tarjeta-futurista {
+        background: var(--color-bg-card-dark);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 0 10px var(--color-neon-purple);
+        border: 1px solid var(--color-neon-purple);
+    }
+
+    .input-futurista {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--color-neon-pink);
+        border-radius: 8px;
+        background: #330066;
+        color: #fff;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+
+    .input-futurista::placeholder,
+    .input-futurista option {
+        color: #ff99ff;
+    }
+    
+    .input-futurista:focus {
+        outline: none;
+        box-shadow: 0 0 10px var(--color-neon-pink);
+    }
+
+    /* Botones */
+    .boton-futurista {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 25px;
+        font-weight: bold;
+        text-transform: uppercase;
+        text-decoration: none;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        transition: transform 0.2s ease, background 0.2s ease;
+        cursor: pointer;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: white;
+    }
+
+    .boton-futurista:hover {
+        transform: translateY(-2px);
+    }
+
+    .boton-menu {
+        background: var(--color-neon-purple);
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        width: 180px;
+    }
+
+    .boton-lanzar {
+        background: var(--color-neon-pink);
+        box-shadow: 0 0 15px var(--color-neon-pink);
+    }
+    
+    .boton-lanzar:hover {
+        background: #ff55d9;
+    }
+    
+    .boton-votar {
+        background: var(--color-neon-aqua);
+        color: #000;
+        border: none;
+        border-radius: 10px;
+        padding: 8px 15px;
+        cursor: pointer;
+        margin: 5px;
+        font-weight: bold;
+        transition: transform 0.2s;
+    }
+    .boton-votar:hover {
+        transform: scale(1.05);
+    }
+
+    .boton-cancelar {
+        background: #ff4444;
+        box-shadow: 0 0 10px #ff4444;
+    }
+    
+    .boton-aceptar {
+        background: #4caf50;
+        box-shadow: 0 0 10px #4caf50;
+    }
+    
+    .boton-reclamar {
+        background: #f4d03f;
+        color: #000;
+        box-shadow: 0 0 10px #f4d03f;
+    }
+
+    /* Listas de retos */
+    .retos-lista {
+        list-style: none;
+        padding: 0;
+        margin-top: 1rem;
+    }
+
+    .reto-item {
+        margin-bottom: 15px;
+    }
+
+    .pregunta-reto {
+        font-style: italic;
+        color: var(--color-neon-aqua);
+        margin-bottom: 10px;
+    }
+
+    .reto-info-texto {
+        font-size: 0.9em;
+        color: #aaa;
+    }
+
+    .reto-item form {
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}

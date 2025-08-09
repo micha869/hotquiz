@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>🔥 HotQuiz</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff4081">
+</head>
+<body>
+
+  <header class="top-banner">
+    <div class="logo">🔥 HotQuiz</div>
+    {% if session.get('alias') %}
+      <a href="{{ url_for('salir') }}" class="btn-salida" title="Cerrar sesión">Salir</a>
+    {% else %}
+      <a href="{{ url_for('login') }}" class="btn-salida" title="Iniciar sesión">Iniciar Sesión</a>
+    {% endif %}
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flash-messages">
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>
