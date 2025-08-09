@@ -1,267 +1,640 @@
+/*
+ * Diseño híbrido: Base de estilo que proporcionaste con colores de Instagram.
+ */
+
 /* ===== RESET GENERAL ===== */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-  background: linear-gradient(135deg, #0f0c29, #302b63, #ff004f);
-  font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #fff;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+    /* Fondo blanco suave para un look limpio */
+    background: #FAFAFA;
+    font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #262626; /* Texto oscuro */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 a {
-  color: #ff4081;
-  text-decoration: none;
+    color: #E1306C; /* Rosa de Instagram */
+    text-decoration: none;
 }
 
 ul {
-  list-style: none;
+    list-style: none;
 }
 
 /* ===== HEADER ===== */
 .top-banner {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 50px;
-  background: linear-gradient(90deg, #ff004f, #ff77a9);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  color: white;
-  font-weight: bold;
-  box-shadow: 0 2px 8px rgba(255, 64, 129, 0.6);
-  z-index: 10000;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 50px;
+    background: #FFFFFF; /* Fondo del header blanco */
+    border-bottom: 1px solid #DBDBDB; /* Borde gris sutil */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    color: #262626; /* Texto del header oscuro */
+    font-weight: bold;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
 }
 
 .top-banner .logo {
-  font-size: 1.2rem;
-  user-select: none;
+    font-size: 1.2rem;
+    user-select: none;
+    color: #E1306C; /* El logo en rosa */
 }
+
 .top-banner .btn-salida {
-  background: transparent;
-  border: 2px solid #fff;
-  padding: 8px 16px;
-  border-radius: 30px;
-  color: #fff;
-  font-weight: 600;
-  transition: all 0.3s ease;
+    background: transparent;
+    border: 2px solid #E1306C;
+    padding: 8px 16px;
+    border-radius: 30px;
+    color: #E1306C;
+    font-weight: 600;
+    transition: all 0.3s ease;
 }
 
 .top-banner .btn-salida:hover {
-  background-color: #fff;
-  color: #ff004f;
-  box-shadow: 0 0 10px #ff4081;
+    background-color: #E1306C;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.6);
 }
 
 /* ===== MAIN CONTENT ===== */
 main {
-  margin-top: 70px;
-  padding: 1rem;
-  flex: 1;
+    margin-top: 70px;
+    padding: 1rem;
+    flex: 1;
 }
 
 /* ===== FLASH MESSAGES ===== */
 .flash-messages {
-  max-width: 600px;
-  margin: 1rem auto;
-  text-align: center;
+    max-width: 600px;
+    margin: 1rem auto;
+    text-align: center;
 }
 
 .flash-messages li {
-  background: linear-gradient(90deg, #ff004f, #ff77a9);
-  color: white;
-  padding: 12px 20px;
-  margin-bottom: 10px;
-  border-radius: 12px;
-  font-weight: bold;
-  box-shadow: 0 0 12px #ff4081;
-  animation: fadeIn 0.5s ease-in-out;
+    background: #fce4ec; /* Fondo rosa muy claro */
+    color: #E1306C;
+    padding: 12px 20px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    font-weight: bold;
+    box-shadow: 0 0 5px rgba(225, 48, 108, 0.2);
+    animation: fadeIn 0.5s ease-in-out;
 }
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes neonPulse {
-  from {
-    text-shadow: 0 0 10px #ff4081, 0 0 20px #ff4081, 0 0 30px #ff4081;
-  }
-  to {
-    text-shadow: 0 0 20px #ff77a9, 0 0 40px #ff77a9;
-  }
-}
+/* Eliminamos la animación de neón del título para el nuevo diseño */
+/* @keyframes neonPulse */
 
 /* ===== BUTTONS ===== */
+/* Los botones mantienen un estilo moderno con los nuevos colores */
 .boton-menu, .btn-primary, .btn-lanzar, .btn-aceptar, .btn-cancelar, .btn-reclamar {
-  background: linear-gradient(90deg, #ff004f, #ff77a9);
-  color: #fff;
-  padding: 12px 18px;
-  border: none;
-  border-radius: 30px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(255, 0, 79, 0.5);
+    background: #E1306C;
+    color: #fff;
+    padding: 12px 18px;
+    border: none;
+    border-radius: 30px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.3);
 }
 
-.boton-menu:hover, .btn-primary:hover, .btn-lanzar:hover, 
+.boton-menu:hover, .btn-primary:hover, .btn-lanzar:hover,
 .btn-aceptar:hover, .btn-cancelar:hover, .btn-reclamar:hover {
-  background: #fff;
-  color: #ff004f;
-  box-shadow: 0 0 20px #ff4081;
+    background: #FF77A9; /* Un rosa más claro en hover */
+    color: #fff;
+    box-shadow: 0 0 15px rgba(225, 48, 108, 0.5);
 }
 
 .btn-cancelar {
-  background: transparent;
-  border: 2px solid #ff004f;
-  color: #ff004f;
+    background: transparent;
+    border: 2px solid #E1306C;
+    color: #E1306C;
 }
 
 .btn-cancelar:hover {
-  background: #ff004f;
-  color: #fff;
+    background: #E1306C;
+    color: #fff;
 }
 
 /* ===== CARDS ===== */
 .confesion-card, .reto-item {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 1rem;
-  margin: 1rem 0;
-  box-shadow: 0 8px 20px rgba(255, 0, 79, 0.4);
-  backdrop-filter: blur(10px);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: #FFFFFF; /* Fondo de tarjetas blanco */
+    border: 1px solid #DBDBDB;
+    border-radius: 16px;
+    padding: 1rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Sombra sutil */
+    backdrop-filter: none; /* Quitamos el filtro de desenfoque */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .confesion-card:hover, .reto-item:hover {
-  transform: scale(1.03);
-  box-shadow: 0 12px 30px rgba(255, 0, 79, 0.6);
+    transform: scale(1.01);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 }
 
 /* ===== CONTAINERS ===== */
 .inicio-container, .juego-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 70px);
-  text-align: center;
-  padding: 1rem;
-  animation: fadeIn 1s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 70px);
+    text-align: center;
+    padding: 1rem;
+    animation: fadeIn 1s ease-in-out;
 }
 
 .titulo {
-  font-size: 3rem;
-  background: linear-gradient(90deg, #ff004f, #ff77a9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  text-shadow: 0 0 10px #ff4081;
-  animation: neonPulse 2s infinite alternate;
+    font-size: 3rem;
+    color: #E1306C;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    text-shadow: none; /* Eliminamos el neón */
+    animation: none; /* Eliminamos la animación */
 }
 
 .subtitulo {
-  font-size: 1.8rem;
-  color: #fff;
-  margin-top: 1rem;
-  text-shadow: 0 0 5px #ff4081;
+    font-size: 1.8rem;
+    color: #262626;
+    margin-top: 1rem;
+    text-shadow: none;
 }
 
 .bienvenida {
-  font-size: 1.2rem;
-  margin-bottom: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px 20px;
-  border-radius: 12px;
-  box-shadow: 0 0 15px rgba(255, 64, 129, 0.5);
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    background: #FFFFFF;
+    padding: 10px 20px;
+    border-radius: 12px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
 }
 
 /* ===== FORMS ===== */
 .formulario {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-width: 400px;
-  width: 100%;
-  margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 400px;
+    width: 100%;
+    margin-bottom: 2rem;
 }
 
 .formulario input, .formulario select, .formulario button {
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  outline: none;
-  font-size: 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.2);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #DBDBDB; /* Borde gris para los inputs */
+    outline: none;
+    font-size: 1rem;
+    background: #FFFFFF;
+    color: #262626;
+    box-shadow: none;
 }
 .titulo-neon {
-  font-size: 2rem;
-  color: #0ff;
-  text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
-  text-align: center;
-  margin-bottom: 1rem;
+    font-size: 2rem;
+    color: #E1306C;
+    text-shadow: none;
+    text-align: center;
+    margin-bottom: 1rem;
 }
 
-.formulario-confesion textarea, 
+.formulario-confesion textarea,
 .formulario-confesion select {
-  width: 100%;
-  margin-bottom: 0.8rem;
-  padding: 10px;
-  background: #111;
-  border: 1px solid #0ff;
-  color: #fff;
-  border-radius: 8px;
+    width: 100%;
+    margin-bottom: 0.8rem;
+    padding: 10px;
+    background: #FFFFFF;
+    border: 1px solid #DBDBDB;
+    color: #262626;
+    border-radius: 8px;
 }
 
 .btn, .btn-like, .btn-comentar, .btn-enviar-comentario {
-  background: #ff4081;
-  border: none;
-  color: #fff;
-  padding: 8px 15px;
-  border-radius: 5px;
-  cursor: pointer;
+    background: #E1306C;
+    border: none;
+    color: #fff;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
 }
 
 .btn.neon, .btn.neon-submit {
-  background: #0ff;
-  color: #000;
-  box-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
+    background: #E1306C;
+    color: #fff;
+    box-shadow: 0 0 5px rgba(225, 48, 108, 0.5);
 }
 
 .confesion {
-  background: #111;
-  border: 1px solid #333;
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 8px;
+    background: #FFFFFF;
+    border: 1px solid #DBDBDB;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 8px;
 }
 
 .confesion-img {
-  max-width: 100%;
-  border-radius: 5px;
-  margin-top: 5px;
+    max-width: 100%;
+    border-radius: 5px;
+    margin-top: 5px;
 }
 
 .confesion-audio {
-  width: 100%;
-  margin-top: 5px;
+    width: 100%;
+    margin-top: 5px;
 }
 
 .comentario {
-  font-size: 0.9rem;
-  margin-left: 10px;
-  color: #ccc;
+    font-size: 0.9rem;
+    margin-left: 10px;
+    color: #777; /* Color de comentario más suave */
 }
 
+/* Los siguientes estilos ya estaban en tu código y son para el modo claro.
+   Los he adaptado para que sean consistentes con el nuevo diseño. */
+:root {
+    --color-bg-dark: #FAFAFA;
+    --color-text-light: #262626;
+    --color-neon-pink: #E1306C;
+    --color-neon-purple: #C13584;
+    --color-neon-aqua: #405DE6;
+    --color-card-dark: #FFFFFF;
+    --color-card-light: #f5f5f5;
+}
+
+body.modo-claro {
+    background: #FAFAFA;
+    color: #262626;
+}
+
+.fondo-neon {
+    background: var(--color-bg-dark);
+    min-height: 100vh;
+    padding: 20px 0;
+}
+
+.container {
+    max-width: 600px;
+    margin: auto;
+}
+
+.titulo-neon {
+    text-align: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--color-text-light);
+    text-shadow: none;
+}
+
+.btn-floating {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--color-neon-pink);
+    color: #fff;
+    font-size: 30px;
+    border: none;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.4);
+    cursor: pointer;
+    z-index: 1000;
+}
+
+.btn-home-neon {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    background: var(--color-neon-aqua);
+    color: #fff;
+    font-size: 24px;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px rgba(64, 93, 230, 0.4);
+    z-index: 1001;
+    text-decoration: none;
+    transition: transform 0.2s;
+}
+.btn-home-neon:hover {
+    transform: scale(1.1);
+}
+
+.btn-futurista {
+    padding: 10px 18px;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.4);
+    color: #fff;
+    background: linear-gradient(135deg, var(--color-neon-purple), var(--color-neon-pink));
+    margin: 0 5px;
+}
+
+.btn-futurista:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(225, 48, 108, 0.6);
+}
+
+.btn-futurista.rojo {
+    background: linear-gradient(135deg, #E1306C, #C13584);
+}
+
+.btn-futurista.verde {
+    background: linear-gradient(135deg, var(--color-neon-aqua), #405DE6);
+    color: #fff;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: #FFFFFF;
+    padding: 20px;
+    border-radius: 15px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    color: var(--color-text-light);
+    position: relative;
+}
+
+.modal-content h3 {
+    text-align: center;
+    color: var(--color-neon-pink);
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    color: var(--color-neon-pink);
+    font-size: 28px;
+    cursor: pointer;
+}
+
+.modal-content textarea {
+    width: 100%;
+    height: 120px;
+    background: #F0F0F0;
+    color: #262626;
+    border: 1px solid #DBDBDB;
+    border-radius: 10px;
+    padding: 10px;
+    resize: none;
+    font-size: 16px;
+    box-shadow: none;
+}
+
+.file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+    width: 100%;
+    margin-top: 10px;
+    background: #F0F0F0;
+    border-radius: 8px;
+    box-shadow: none;
+}
+.file-input-wrapper input[type="file"] {
+    font-size: 100px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+}
+.file-input-wrapper label {
+    display: block;
+    color: var(--color-neon-pink);
+    padding: 8px 12px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.color-picker-wrapper {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-neon-pink);
+}
+.color-picker-input {
+    width: 100px;
+    height: 40px;
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.filtros {
+    margin-top: 20px;
+    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.filtros .btn-futurista.filtro {
+    background: #EFEFEF;
+    box-shadow: none;
+    color: #262626;
+}
+.filtros .btn-futurista.filtro:hover {
+    background: var(--color-neon-pink);
+    box-shadow: 0 0 10px rgba(225, 48, 108, 0.4);
+    color: #fff;
+}
+
+/* Estilos de la tarjeta de confesión */
+.confesion-card {
+    position: relative;
+    padding: 20px;
+    margin: 20px auto;
+    border-radius: 15px;
+    color: var(--color-text-light);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    transition: background 0.3s ease;
+    overflow-wrap: break-word;
+    max-width: 600px;
+}
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+.user-name {
+    margin: 0;
+    font-weight: bold;
+    color: var(--color-neon-pink);
+}
+.confesion-text {
+    margin-top: 15px;
+    white-space: pre-wrap;
+    text-align: justify;
+    padding: 0 5px;
+}
+.conf-media-container {
+    text-align: center;
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+}
+.conf-image {
+    max-width: 90%;
+    max-height: 400px;
+    border-radius: 10px;
+    object-fit: contain;
+    border: 2px solid var(--color-neon-purple);
+}
+.audio-player audio {
+    width: 100%;
+    border-radius: 50px;
+    outline: none;
+    background: #DBDBDB;
+}
+.reacciones {
+    margin-top: 15px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.reacciones .emoji-btn {
+    background: #EFEFEF;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #262626;
+    transition: 0.2s;
+}
+.reacciones .emoji-btn:hover {
+    background: var(--color-neon-pink);
+    transform: scale(1.1);
+    color: #fff;
+}
+.reacciones .emoji-btn span {
+    margin-left: 5px;
+    font-size: 0.9em;
+    color: var(--color-neon-pink);
+}
+.comentarios-container {
+    margin-top: 15px;
+}
+.comentario-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+.comentario-info {
+    flex: 1;
+}
+.comentario-info p {
+    margin: 0;
+}
+.comentario-box {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    gap: 8px;
+}
+.comentario-box input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border-radius: 25px;
+    border: 1px solid #DBDBDB;
+    outline: none;
+    font-size: 16px;
+    background: #F0F0F0;
+    color: #262626;
+}
+.enviar-btn, .eliminar-btn {
+    background: var(--color-neon-aqua);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: transform 0.2s;
+    box-shadow: 0 0 8px rgba(64, 93, 230, 0.4);
+}
+.enviar-btn:hover, .eliminar-btn:hover {
+    transform: scale(1.1);
+}
+.eliminar-btn {
+    background: linear-gradient(135deg, #E1306C, #C13584);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(225, 48, 108, 0.4);
+}
+/* Estilos para el modo claro/oscuro (ajustados a la paleta de colores) */
+body.modo-claro {
+    background: #FAFAFA;
+    color: #262626;
+}
+body.modo-claro .confesion-card {
+    background: #FFFFFF;
+    color: #262626;
+    box-shadow: 0 0 5px #ccc;
+}
+body.modo-claro .reacciones .emoji-btn {
+    background: #EFEFEF;
+    color: #262626;
+}
+body.modo-claro .reacciones .emoji-btn:hover {
+    background: #E1306C;
+    color: #fff;
+}
+body.modo-claro .reacciones .emoji-btn span {
+    color: var(--color-neon-pink);
+}
+body.modo-claro .comentario-box input {
+    background: #F0F0F0;
+    color: #262626;
+}
