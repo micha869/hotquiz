@@ -182,12 +182,13 @@
         color: #262626;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         overflow-wrap: break-word;
-        background-color: #FFFFFF;
+        background-color: #FFFFFF; /* Color de fondo por defecto */
         border: 1px solid #DBDBDB;
     }
 
     .card-header {
         display: flex;
+        justify-content: space-between; /* Alinea los elementos a los extremos */
         align-items: center;
         gap: 10px;
     }
@@ -208,7 +209,7 @@
         white-space: pre-wrap;
         text-align: justify;
         padding: 0 5px;
-        color: #262626;
+        color: inherit; /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .conf-media-container {
@@ -278,7 +279,7 @@
 
     .comentario-info p {
         margin: 0;
-        color: #262626;
+        color: inherit; /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .comentario-box {
@@ -310,11 +311,11 @@
         font-size: 16px;
         transition: transform 0.2s;
     }
-
+    
     .enviar-btn:hover, .eliminar-btn:hover {
         transform: scale(1.1);
     }
-
+    
     .eliminar-btn {
         background: #FF4081;
     }

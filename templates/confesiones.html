@@ -186,12 +186,13 @@
         color: #262626;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         overflow-wrap: break-word;
-        background-color: #FFFFFF;
+        background-color: #FFFFFF; /* Color de fondo por defecto */
         border: 1px solid #DBDBDB;
     }
 
     .card-header {
         display: flex;
+        justify-content: space-between; /* Alinea los elementos a los extremos */
         align-items: center;
         gap: 10px;
     }
@@ -212,7 +213,7 @@
         white-space: pre-wrap;
         text-align: justify;
         padding: 0 5px;
-        color: #262626;
+        color: inherit; /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .conf-media-container {
@@ -282,7 +283,7 @@
 
     .comentario-info p {
         margin: 0;
-        color: #262626;
+        color: inherit; /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .comentario-box {
@@ -314,14 +315,15 @@
         font-size: 16px;
         transition: transform 0.2s;
     }
-
+    
     .enviar-btn:hover, .eliminar-btn:hover {
         transform: scale(1.1);
     }
-
+    
     .eliminar-btn {
         background: #FF4081;
     }
+    
 </style>
 
 <div class="container">
@@ -358,7 +360,17 @@
 
     <div id="contenedor-confesiones">
         {% for conf in confesiones %}
-            {% include "confesiones_card.html" %}
+            <div class="confesion-card" style="background-color: {{ conf.color if conf.color else '#FFFFFF' }}">
+                <div class="card-header">
+                    <div class="user-info">
+                        <h4 class="user-name">Anónimo</h4>
+                    </div>
+                    <button class="eliminar-btn" onclick="eliminarConfesion('{{ conf.id }}')">
+                        ✖️
+                    </button>
+                </div>
+                <p class="confesion-text">{{ conf.texto }}</p>
+                </div>
         {% endfor %}
     </div>
 
@@ -397,14 +409,14 @@
         var isLightMode = document.body.classList.contains('modo-claro');
         localStorage.setItem('modoClaro', isLightMode);
 
-        // Puedes agregar lógica para actualizar los estilos de las tarjetas
-        // si la base de datos devuelve un color de fondo para la tarjeta.
-        // Aquí se actualiza el color de la tarjeta si la confesión no tiene uno.
         const tarjetas = document.querySelectorAll('.confesion-card');
         tarjetas.forEach(tarjeta => {
-            if (tarjeta.style.backgroundColor === '' || tarjeta.style.backgroundColor.toLowerCase() === 'rgb(51, 0, 102)') {
-                tarjeta.style.backgroundColor = isLightMode ? '#ffffff' : '#330066';
-                tarjeta.style.color = isLightMode ? '#262626' : '#fff';
+            const originalColor = tarjeta.getAttribute('style');
+            if (isLightMode) {
+                tarjeta.style.color = '#262626';
+            } else {
+                // Esta lógica es para si quieres un modo oscuro
+                // tarjeta.style.color = '#fff';
             }
         });
     }
@@ -432,6 +444,28 @@
                 $('#contenedor-confesiones').html('<p style="color:red; text-align:center;">Error al cargar las confesiones.</p>');
             }
         });
+    }
+
+    // Nueva función para el botón de eliminar
+    function eliminarConfesion(confesionId) {
+        if (confirm('¿Estás seguro de que quieres eliminar esta confesión?')) {
+            // Aquí debes implementar la llamada a tu API o ruta de Flask para eliminar la confesión
+            alert(`Eliminando la confesión con ID: ${confesionId}`);
+            // Ejemplo de llamada AJAX (necesitas ajustar la URL y el método)
+            /*
+            $.ajax({
+                url: `/eliminar_confesion/${confesionId}`,
+                type: 'POST',
+                success: function(response) {
+                    // Si se elimina correctamente, recarga la página o remueve la tarjeta del DOM
+                    location.reload();
+                },
+                error: function(error) {
+                    alert('No se pudo eliminar la confesión.');
+                }
+            });
+            */
+        }
     }
 </script>
 
