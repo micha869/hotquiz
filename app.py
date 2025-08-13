@@ -19,7 +19,7 @@ from collections import Counter
 import hashlib
 import time
 import pusher
-from gridfs import GridFSBucket
+from gridfs import GridFS
 import base64
 import certifi
 
@@ -28,11 +28,11 @@ import certifi
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
-app.permanent_session_lifetime = timedelta(days=30)  # duración de la cookie
+app.permanent_session_lifetime = timedelta(days=30)  # duración de la cookie
 socketio = SocketIO(app)
 client = MongoClient(os.getenv("MONGODB_URI"), tlsCAFile=certifi.where())
 db = client.hotquiz
-fs = GridFSBucket(db)
+fs = GridFS(db)
 
 usuarios_col = db.usuarios
 confesiones_col = db.confesiones
@@ -55,11 +55,11 @@ mensajes_col = db.mensajes
 
 # Configuración de Pusher (Chat)
 pusher_client = pusher.Pusher(
-    app_id=os.getenv("PUSHER_APP_ID", "2031513"),
-    key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
-    secret=os.getenv("PUSHER_SECRET", "84d7288e7578267c3f6e"),
-    cluster=os.getenv("PUSHER_CLUSTER", "mt1"),
-    ssl=True
+    app_id=os.getenv("PUSHER_APP_ID", "2031513"),
+    key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
+    secret=os.getenv("PUSHER_SECRET", "84d7288e7578267c3f6e"),
+    cluster=os.getenv("PUSHER_CLUSTER", "mt1"),
+    ssl=True
 )
 
 # ---------------------------------------------------------------------------
@@ -72,117 +72,119 @@ ALLOWED_AUDIO = {"mp3", "wav", "ogg", "m4a"}
 ALLOWED_VIDEO = {"mp4", "mov", "avi", "wmv", "flv", "webm"}
 
 def allowed_file(filename, allowed_extensions):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
 
 # ¡NUEVO! Ruta para servir archivos desde GridFS
 @app.route("/media/<file_id>")
 def serve_media(file_id):
-    try:
-        file_obj = fs.get(ObjectId(file_id))
-        return send_file(
-            file_obj,
-            download_name=file_obj.filename,
-            mimetype=file_obj.content_type
-        )
-    except Exception as e:
-        print(f"Error al servir el archivo: {e}")
-        return "Archivo no encontrado", 404
+    try:
+        # Se usó fs.get() en lugar de fs.open_download_stream()
+        # El método .get() de la clase GridFS retorna un objeto GridOut que es compatible con send_file
+        file_obj = fs.get(ObjectId(file_id))
+        return send_file(
+            file_obj,
+            download_name=file_obj.filename,
+            mimetype=file_obj.content_type
+        )
+    except Exception as e:
+        print(f"Error al servir el archivo: {e}")
+        return "Archivo no encontrado", 404
 
 # ---------------------------------------------------------------------------
 # Helper: obtener usuario y saldo
 # ---------------------------------------------------------------------------
 
 def get_user_and_saldo():
-    alias = session.get("alias")
-    if not alias:
-        return None, 0, 0
-    user = usuarios_col.find_one({"alias": alias})
-    oro = int(user.get("tokens_oro", 0)) if user else 0
-    plata = int(user.get("tokens_plata", 0)) if user else 0
-    return alias, oro, plata
+    alias = session.get("alias")
+    if not alias:
+        return None, 0, 0
+    user = usuarios_col.find_one({"alias": alias})
+    oro = int(user.get("tokens_oro", 0)) if user else 0
+    plata = int(user.get("tokens_plata", 0)) if user else 0
+    return alias, oro, plata
 
 # ---------------------------------------------------------------------------
 # Rutas de autenticación
 # ---------------------------------------------------------------------------
 @app.route("/")
 def index():
-    if session.get("alias"):
-        return redirect(url_for("inicio"))
-    return render_template("index.html")
+    if session.get("alias"):
+        return redirect(url_for("inicio"))
+    return render_template("index.html")
 
 @app.route("/inicio")
 def inicio():
-    alias = session.get("alias")
-    if not alias:
-        flash("Debes iniciar sesión para ver esta página.")
-        return redirect(url_for("index"))
-    return render_template("inicio.html", alias=alias)
+    alias = session.get("alias")
+    if not alias:
+        flash("Debes iniciar sesión para ver esta página.")
+        return redirect(url_for("index"))
+    return render_template("inicio.html", alias=alias)
 
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
-    if request.method == "POST":
-        alias = request.form["alias"].strip()
-        email = request.form["email"].strip()
-        password = request.form["password"]
+    if request.method == "POST":
+        alias = request.form["alias"].strip()
+        email = request.form["email"].strip()
+        password = request.form["password"]
 
-        if not alias or not email or not password:
-            flash("Completa todos los campos")
-            return redirect(url_for("registro"))
+        if not alias or not email or not password:
+            flash("Completa todos los campos")
+            return redirect(url_for("registro"))
 
-        acepta_terminos = request.form.get("acepta_terminos")
-        acepta_privacidad = request.form.get("acepta_privacidad")
-        if not acepta_terminos or not acepta_privacidad:
-            flash("Debes aceptar los términos y la política de privacidad")
-            return redirect(url_for("registro"))
+        acepta_terminos = request.form.get("acepta_terminos")
+        acepta_privacidad = request.form.get("acepta_privacidad")
+        if not acepta_terminos or not acepta_privacidad:
+            flash("Debes aceptar los términos y la política de privacidad")
+            return redirect(url_for("registro"))
 
-        if usuarios_col.find_one({"alias": alias}):
-            flash("Alias ya registrado")
-            return redirect(url_for("registro"))
+        if usuarios_col.find_one({"alias": alias}):
+            flash("Alias ya registrado")
+            return redirect(url_for("registro"))
 
-        hashed_password = generate_password_hash(password)
-        usuarios_col.insert_one({
-            "alias": alias,
-            "email": email,
-            "password": hashed_password,
-            "tokens_oro": 0,
-            "tokens_plata": 100,
-            "verificado": False
-        })
-        flash("Registro exitoso, inicia sesión")
-        return redirect(url_for("login"))
-    return render_template("registro.html")
+        hashed_password = generate_password_hash(password)
+        usuarios_col.insert_one({
+            "alias": alias,
+            "email": email,
+            "password": hashed_password,
+            "tokens_oro": 0,
+            "tokens_plata": 100,
+            "verificado": False
+        })
+        flash("Registro exitoso, inicia sesión")
+        return redirect(url_for("login"))
+    return render_template("registro.html")
 
 @app.route("/terminos")
 def terminos():
-    return render_template("terminos.html")
+    return render_template("terminos.html")
 
 @app.route("/privacidad")
 def privacidad():
-    return render_template("privacidad.html")
+    return render_template("privacidad.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
-        alias = request.form["alias"].strip()
-        password = request.form["password"]
-        recordarme = request.form.get("recordarme")
+    if request.method == "POST":
+        alias = request.form["alias"].strip()
+        password = request.form["password"]
+        recordarme = request.form.get("recordarme")
 
-        user = usuarios_col.find_one({"alias": alias})
-        if not user or not check_password_hash(user["password"], password):
-            flash("Credenciales inválidas")
-            return redirect(url_for("login"))
+        user = usuarios_col.find_one({"alias": alias})
+        if not user or not check_password_hash(user["password"], password):
+            flash("Credenciales inválidas")
+            return redirect(url_for("login"))
 
-        session.permanent = bool(recordarme)
-        session["alias"] = alias
-        flash("Sesión iniciada")
-        return redirect(url_for("inicio"))
-    return render_template("login.html")
+        session.permanent = bool(recordarme)
+        session["alias"] = alias
+        flash("Sesión iniciada")
+        return redirect(url_for("inicio"))
+    return render_template("login.html")
 
 @app.route("/salir")
 def salir():
-    session.clear()
-    flash("Sesión cerrada")
-    return redirect(url_for("index"))
+    session.clear()
+    flash("Sesión cerrada")
+    return redirect(url_for("index"))
 
 # ---------------------------------------------------------------------------
 # Juego 1 – Foto Hot
@@ -190,178 +192,178 @@ def salir():
 
 @app.route("/foto_hot", methods=["GET", "POST"])
 def foto_hot():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para jugar.")
-        return redirect(url_for("index"))
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias:
+        flash("Inicia sesión para jugar.")
+        return redirect(url_for("index"))
 
-    if request.method == "POST":
-        rival = request.form.get("rival")
-        file = request.files.get("imagen")
+    if request.method == "POST":
+        rival = request.form.get("rival")
+        file = request.files.get("imagen")
 
-        if not file or not allowed_file(file.filename, ALLOWED_IMAGE):
-            flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
-            return redirect(url_for("foto_hot"))
+        if not file or not allowed_file(file.filename, ALLOWED_IMAGE):
+            flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
+            return redirect(url_for("foto_hot"))
 
-        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
-        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
-        ruta_img = str(file_id)
+        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
+        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+        ruta_img = str(file_id)
 
-        duelo = fotos_col.find_one({
-            "$or": [
-                {"player": alias, "rival": rival, "estado": "pendiente"},
-                {"player": rival, "rival": alias, "estado": "pendiente"}
-            ]
-        })
+        duelo = fotos_col.find_one({
+            "$or": [
+                {"player": alias, "rival": rival, "estado": "pendiente"},
+                {"player": rival, "rival": alias, "estado": "pendiente"}
+            ]
+        })
 
-        if duelo:
-            update = {}
-            if duelo["player"] == alias and not duelo.get("player_image"):
-                update = {"player_image": ruta_img, "player_tokens": 0, "player_votes": 0}
-            elif duelo["rival"] == alias and not duelo.get("rival_image"):
-                update = {"rival_image": ruta_img, "rival_tokens": 0, "rival_votes": 0}
-            else:
-                flash("Ya subiste una foto para este duelo.")
-                return redirect(url_for("foto_hot"))
+        if duelo:
+            update = {}
+            if duelo["player"] == alias and not duelo.get("player_image"):
+                update = {"player_image": ruta_img, "player_tokens": 0, "player_votes": 0}
+            elif duelo["rival"] == alias and not duelo.get("rival_image"):
+                update = {"rival_image": ruta_img, "rival_tokens": 0, "rival_votes": 0}
+            else:
+                flash("Ya subiste una foto para este duelo.")
+                return redirect(url_for("foto_hot"))
 
-            fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
-            flash("Foto subida al duelo 🔥")
-        else:
-            fotos_col.insert_one({
-                "player": alias,
-                "player_image": ruta_img,
-                "player_tokens": 0,
-                "player_votes": 0,
-                "rival": rival or None,
-                "rival_image": None,
-                "rival_tokens": 0,
-                "rival_votes": 0,
-                "comentarios": [],
-                "fecha": datetime.now(),
-                "estado": "pendiente",
-                "votantes": []
-            })
-            flash("Foto subida al duelo 🔥")
+            fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
+            flash("Foto subida al duelo 🔥")
+        else:
+            fotos_col.insert_one({
+                "player": alias,
+                "player_image": ruta_img,
+                "player_tokens": 0,
+                "player_votes": 0,
+                "rival": rival or None,
+                "rival_image": None,
+                "rival_tokens": 0,
+                "rival_votes": 0,
+                "comentarios": [],
+                "fecha": datetime.now(),
+                "estado": "pendiente",
+                "votantes": []
+            })
+            flash("Foto subida al duelo 🔥")
 
-        return redirect(url_for("foto_hot"))
+        return redirect(url_for("foto_hot"))
 
-    duelos = list(fotos_col.find({"estado": "pendiente"}))
-    return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
+    duelos = list(fotos_col.find({"estado": "pendiente"}))
+    return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
 
 
 @app.route("/votar_duelo", methods=["POST"])
 def votar_duelo():
-    alias, tokens_oro, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    alias, tokens_oro, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
 
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    lado = data.get("lado")
-    if lado not in ["player", "rival"]:
-        return jsonify(success=False, message="Lado inválido"), 400
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    lado = data.get("lado")
+    if lado not in ["player", "rival"]:
+        return jsonify(success=False, message="Lado inválido"), 400
 
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
-    if not duelo:
-        return jsonify(success=False, message="Duelo no encontrado"), 404
+    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    if not duelo:
+        return jsonify(success=False, message="Duelo no encontrado"), 404
 
-    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
-        return jsonify(success=False, message="Ya votaste"), 403
+    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
+        return jsonify(success=False, message="Ya votaste"), 403
 
-    if tokens_oro < 1:
-        return jsonify(success=False, message="Tokens oro insuficientes"), 403
+    if tokens_oro < 1:
+        return jsonify(success=False, message="Tokens oro insuficientes"), 403
 
-    usuarios_col.update_one(
-        {"alias": alias, "tokens_oro": {"$gte": 1}},
-        {"$inc": {"tokens_oro": -1}}
-    )
+    usuarios_col.update_one(
+        {"alias": alias, "tokens_oro": {"$gte": 1}},
+        {"$inc": {"tokens_oro": -1}}
+    )
 
-    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
-    usuarios_col.update_one(
-        {"alias": ganador_alias},
-        {"$inc": {"tokens_oro": 1}}
-    )
+    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
+    usuarios_col.update_one(
+        {"alias": ganador_alias},
+        {"$inc": {"tokens_oro": 1}}
+    )
 
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {
-            "$inc": {f"{lado}_votes": 1},
-            "$push": {"votantes": {"usuario": alias, "lado": lado, "fecha": datetime.now()}}
-        }
-    )
-    return jsonify(success=True, message="Voto registrado y token transferido")
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {
+            "$inc": {f"{lado}_votes": 1},
+            "$push": {"votantes": {"usuario": alias, "lado": lado, "fecha": datetime.now()}}
+        }
+    )
+    return jsonify(success=True, message="Voto registrado y token transferido")
 
 @app.route("/comentario_duelo", methods=["POST"])
 def comentario_duelo():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
 
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    texto = data.get("texto", "").strip()
-    if not duelo_id or not texto:
-        return jsonify(success=False, message="Comentario inválido"), 400
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    texto = data.get("texto", "").strip()
+    if not duelo_id or not texto:
+        return jsonify(success=False, message="Comentario inválido"), 400
 
-    comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
-    fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
-    return jsonify(success=True)
+    comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
+    fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
+    return jsonify(success=True)
 
 @app.route("/aceptar_reto", methods=["POST"])
 def aceptar_reto():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Inicia sesión"), 401
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Inicia sesión"), 401
 
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    imagen_data = data.get("imagen")
-    if not duelo_id or not imagen_data:
-        return jsonify(success=False, message="Faltan datos"), 400
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    imagen_data = data.get("imagen")
+    if not duelo_id or not imagen_data:
+        return jsonify(success=False, message="Faltan datos"), 400
 
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
-    if not duelo or duelo.get("rival"):
-        return jsonify(success=False, message="Reto no disponible"), 403
+    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    if not duelo or duelo.get("rival"):
+        return jsonify(success=False, message="Reto no disponible"), 403
 
-    header, b64 = imagen_data.split(",", 1)
-    ext = header.split(";")[0].split("/")[1]
+    header, b64 = imagen_data.split(",", 1)
+    ext = header.split(";")[0].split("/")[1]
 
-    # ¡CORRECCIÓN! Subimos a GridFS en lugar de guardar en disco
-    file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}_rival.{ext}", content_type=f"image/{ext}")
-    ruta_img = str(file_id)
+    # ¡CORRECCIÓN! Subimos a GridFS en lugar de guardar en disco
+    file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}_rival.{ext}", content_type=f"image/{ext}")
+    ruta_img = str(file_id)
 
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {"$set": {"rival": alias, "rival_image": ruta_img, "rival_votes": 0, "rival_tokens": 0}}
-    )
-    return jsonify(success=True)
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {"$set": {"rival": alias, "rival_image": ruta_img, "rival_votes": 0, "rival_tokens": 0}}
+    )
+    return jsonify(success=True)
 
 @app.route("/eliminar_foto_hot/<reto_id>", methods=["POST"])
 def eliminar_foto_hot(reto_id):
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para eliminar el reto.")
-        return redirect(url_for("index"))
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        flash("Inicia sesión para eliminar el reto.")
+        return redirect(url_for("index"))
 
-    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
-    if not duelo:
-        flash("Reto no encontrado.")
-        return redirect(url_for("foto_hot"))
+    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
+    if not duelo:
+        flash("Reto no encontrado.")
+        return redirect(url_for("foto_hot"))
 
-    if duelo["player"] != alias:
-        flash("No tienes permiso para eliminar este reto.")
-        return redirect(url_for("foto_hot"))
+    if duelo["player"] != alias:
+        flash("No tienes permiso para eliminar este reto.")
+        return redirect(url_for("foto_hot"))
 
-    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
-    if "player_image" in duelo:
-        try:
-            fs.delete(ObjectId(duelo["player_image"]))
-        except Exception as e:
-            print(f"Error al eliminar de GridFS: {e}")
+    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
+    if "player_image" in duelo:
+        try:
+            fs.delete(ObjectId(duelo["player_image"]))
+        except Exception as e:
+            print(f"Error al eliminar de GridFS: {e}")
 
-    fotos_col.delete_one({"_id": duelo["_id"]})
-    flash("Reto eliminado y tokens devueltos.")
-    return redirect(url_for("foto_hot"))
+    fotos_col.delete_one({"_id": duelo["_id"]})
+    flash("Reto eliminado y tokens devueltos.")
+    return redirect(url_for("foto_hot"))
 
 # ---------------------------------------------------------------------------
 # Juego 2 – Susurra y Gana (audios sensuales)
@@ -369,179 +371,179 @@ def eliminar_foto_hot(reto_id):
 
 @app.route("/audio_hot", methods=["GET", "POST"])
 def audio_hot():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias or alias == "Invitado":
-        flash("Inicia sesión para participar.")
-        return redirect(url_for("login"))
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias or alias == "Invitado":
+        flash("Inicia sesión para participar.")
+        return redirect(url_for("login"))
 
-    if request.method == "POST":
-        file = request.files.get("audio")
-        descripcion = request.form.get("descripcion", "").strip()
+    if request.method == "POST":
+        file = request.files.get("audio")
+        descripcion = request.form.get("descripcion", "").strip()
 
-        if not file or file.filename == "":
-            flash("No seleccionaste ningún archivo.")
-            return redirect(url_for("audio_hot"))
+        if not file or file.filename == "":
+            flash("No seleccionaste ningún archivo.")
+            return redirect(url_for("audio_hot"))
 
-        if not allowed_file(file.filename, ALLOWED_AUDIO):
-            flash("Sube un audio válido (mp3, wav, ogg, m4a)")
-            return redirect(url_for("audio_hot"))
+        if not allowed_file(file.filename, ALLOWED_AUDIO):
+            flash("Sube un audio válido (mp3, wav, ogg, m4a)")
+            return redirect(url_for("audio_hot"))
 
-        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
-        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
-        
-        audios_col.insert_one({
-            "user": alias,
-            "audio": str(file_id), # Guardamos el ID del archivo
-            "descripcion": descripcion,
-            "votos": 0,
-            "reacciones": [],
-            "fecha": datetime.now()
-        })
+        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
+        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+        
+        audios_col.insert_one({
+            "user": alias,
+            "audio": str(file_id), # Guardamos el ID del archivo
+            "descripcion": descripcion,
+            "votos": 0,
+            "reacciones": [],
+            "fecha": datetime.now()
+        })
 
-        flash("Audio subido con éxito 🔥")
-        return redirect(url_for("audio_hot"))
+        flash("Audio subido con éxito 🔥")
+        return redirect(url_for("audio_hot"))
 
-    # GET: Mostrar audios y datos
-    pistas = list(audios_col.find().sort("fecha", -1))
-    for pista in pistas:
-        pista["comentarios"] = list(comentarios_col.find({"audio_id": str(pista["_id"])}))
+    # GET: Mostrar audios y datos
+    pistas = list(audios_col.find().sort("fecha", -1))
+    for pista in pistas:
+        pista["comentarios"] = list(comentarios_col.find({"audio_id": str(pista["_id"])}))
 
-    tokens_por_usuario = {
-        u.get("alias"): u.get("tokens", 0)
-        for u in usuarios_col.find({}, {"alias": 1, "tokens": 1})
-    }
+    tokens_por_usuario = {
+        u.get("alias"): u.get("tokens", 0)
+        for u in usuarios_col.find({}, {"alias": 1, "tokens": 1})
+    }
 
-    historial = list(donaciones_col.find().sort("fecha", -1).limit(10))
+    historial = list(donaciones_col.find().sort("fecha", -1).limit(10))
 
-    return render_template("audio_hot.html",
-                            alias=alias,
-                            tokens_oro=tokens_oro,
-                            tokens_plata=tokens_plata,
-                            pistas=pistas,
-                            tokens_por_usuario=tokens_por_usuario,
-                            historial=historial)
+    return render_template("audio_hot.html",
+                            alias=alias,
+                            tokens_oro=tokens_oro,
+                            tokens_plata=tokens_plata,
+                            pistas=pistas,
+                            tokens_por_usuario=tokens_por_usuario,
+                            historial=historial)
 
 
 @app.route("/apoyar_audio", methods=["POST"])
 def apoyar_audio():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para apoyar con tokens")
-        return redirect(url_for("audio_hot"))
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para apoyar con tokens")
+        return redirect(url_for("audio_hot"))
 
-    autor = request.form.get("autor")
-    if not autor or alias == autor:
-        flash("No puedes apoyarte a ti mismo")
-        return redirect(url_for("audio_hot"))
+    autor = request.form.get("autor")
+    if not autor or alias == autor:
+        flash("No puedes apoyarte a ti mismo")
+        return redirect(url_for("audio_hot"))
 
-    user = usuarios_col.find_one({"alias": alias})
-    if not user:
-        flash("Usuario no encontrado")
-        return redirect(url_for("audio_hot"))
+    user = usuarios_col.find_one({"alias": alias})
+    if not user:
+        flash("Usuario no encontrado")
+        return redirect(url_for("audio_hot"))
 
-    if user.get("tokens_oro", 0) >= 1:
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -1}})
-        donaciones_col.insert_one({
-            "de": alias,
-            "para": autor,
-            "fecha": datetime.now(),
-            "tipo": "oro"
-        })
-        flash(f"Apoyaste a {autor} con 1 token de oro ✨")
-    elif user.get("tokens_plata", 0) >= 1:
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
-        donaciones_col.insert_one({
-            "de": alias,
-            "para": autor,
-            "fecha": datetime.now(),
-            "tipo": "plata"
-        })
-        flash(f"Apoyaste a {autor} con 1 token de plata 🤝")
-    else:
-        flash("No tienes tokens suficientes 💸")
-    
-    return redirect(url_for("audio_hot"))
+    if user.get("tokens_oro", 0) >= 1:
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -1}})
+        donaciones_col.insert_one({
+            "de": alias,
+            "para": autor,
+            "fecha": datetime.now(),
+            "tipo": "oro"
+        })
+        flash(f"Apoyaste a {autor} con 1 token de oro ✨")
+    elif user.get("tokens_plata", 0) >= 1:
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
+        donaciones_col.insert_one({
+            "de": alias,
+            "para": autor,
+            "fecha": datetime.now(),
+            "tipo": "plata"
+        })
+        flash(f"Apoyaste a {autor} con 1 token de plata 🤝")
+    else:
+        flash("No tienes tokens suficientes 💸")
+    
+    return redirect(url_for("audio_hot"))
 
 
 @app.route("/votar_audio/<audio_id>", methods=["POST"])
 def votar_audio(audio_id):
-    alias = session.get("alias")
-    if not alias:
-        flash("Inicia sesión para votar")
-        return redirect(url_for("login"))
+    alias = session.get("alias")
+    if not alias:
+        flash("Inicia sesión para votar")
+        return redirect(url_for("login"))
 
-    audios_col.update_one({"_id": ObjectId(audio_id)}, {"$inc": {"votos": 1}})
-    flash("✅ Voto registrado")
-    return redirect(url_for("audio_hot"))
+    audios_col.update_one({"_id": ObjectId(audio_id)}, {"$inc": {"votos": 1}})
+    flash("✅ Voto registrado")
+    return redirect(url_for("audio_hot"))
 
 @app.route("/comentar_audio/<audio_id>", methods=["POST"])
 def comentar_audio(audio_id):
-    alias = session.get("alias")
-    comentario = request.form.get("comentario", "").strip()
-    if alias and comentario:
-        comentarios_col.insert_one({
-            "audio_id": audio_id,
-            "usuario": alias,
-            "comentario": comentario,
-            "fecha": datetime.now()
-        })
-        flash("💬 Comentario agregado")
-    else:
-        flash("❌ Comentario vacío")
-    return redirect(url_for("audio_hot"))
+    alias = session.get("alias")
+    comentario = request.form.get("comentario", "").strip()
+    if alias and comentario:
+        comentarios_col.insert_one({
+            "audio_id": audio_id,
+            "usuario": alias,
+            "comentario": comentario,
+            "fecha": datetime.now()
+        })
+        flash("💬 Comentario agregado")
+    else:
+        flash("❌ Comentario vacío")
+    return redirect(url_for("audio_hot"))
 
 @app.route("/reaccion_audio/<audio_id>/<tipo>", methods=["POST"])
 def reaccion_audio(audio_id, tipo):
-    alias = session.get("alias")
-    if not alias:
-        flash("Inicia sesión para reaccionar")
-        return redirect(url_for("login"))
+    alias = session.get("alias")
+    if not alias:
+        flash("Inicia sesión para reaccionar")
+        return redirect(url_for("login"))
 
-    existe = reacciones_col.find_one({
-        "audio_id": audio_id,
-        "usuario": alias,
-        "tipo": tipo
-    })
+    existe = reacciones_col.find_one({
+        "audio_id": audio_id,
+        "usuario": alias,
+        "tipo": tipo
+    })
 
-    if existe:
-        flash("Ya reaccionaste con ese tipo a este audio")
-    else:
-        reacciones_col.insert_one({
-            "audio_id": audio_id,
-            "usuario": alias,
-            "tipo": tipo,
-            "fecha": datetime.now()
-        })
-        flash("🔁 Reacción registrada")
+    if existe:
+        flash("Ya reaccionaste con ese tipo a este audio")
+    else:
+        reacciones_col.insert_one({
+            "audio_id": audio_id,
+            "usuario": alias,
+            "tipo": tipo,
+            "fecha": datetime.now()
+        })
+        flash("🔁 Reacción registrada")
 
-    return redirect(url_for("audio_hot"))
+    return redirect(url_for("audio_hot"))
 
 @app.route("/audio_eliminar_reto/<audio_id>", methods=["POST"])
 def audio_hot_eliminar_reto(audio_id):
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para eliminar el audio")
-        return redirect(url_for("audio_hot"))
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        flash("Inicia sesión para eliminar el audio")
+        return redirect(url_for("audio_hot"))
 
-    pista = audios_col.find_one({"_id": ObjectId(audio_id)})
-    if not pista:
-        flash("Audio no encontrado")
-        return redirect(url_for("audio_hot"))
+    pista = audios_col.find_one({"_id": ObjectId(audio_id)})
+    if not pista:
+        flash("Audio no encontrado")
+        return redirect(url_for("audio_hot"))
 
-    if pista["user"] != alias:
-        flash("Solo puedes eliminar tus propios audios")
-        return redirect(url_for("audio_hot"))
+    if pista["user"] != alias:
+        flash("Solo puedes eliminar tus propios audios")
+        return redirect(url_for("audio_hot"))
 
-    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
-    if "audio" in pista:
-        try:
-            fs.delete(ObjectId(pista["audio"]))
-        except Exception as e:
-            print(f"Error al eliminar de GridFS: {e}")
+    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
+    if "audio" in pista:
+        try:
+            fs.delete(ObjectId(pista["audio"]))
+        except Exception as e:
+            print(f"Error al eliminar de GridFS: {e}")
 
-    audios_col.delete_one({"_id": ObjectId(audio_id)})
-    flash("Audio eliminado correctamente")
-    return redirect(url_for("audio_hot"))
+    audios_col.delete_one({"_id": ObjectId(audio_id)})
+    flash("Audio eliminado correctamente")
+    return redirect(url_for("audio_hot"))
 
 
 # ---------------------------------------------------------------------------
@@ -550,362 +552,347 @@ def audio_hot_eliminar_reto(audio_id):
 
 @app.route("/jugar")
 def jugar():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para jugar")
-        return redirect(url_for("index"))
-    
-    retos = list(retos_col.find({"estado": "pendiente"}))
-    return render_template("jugar.html", saldo=tokens_oro, saldo_plata=tokens_plata, retos=retos)
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para jugar")
+        return redirect(url_for("index"))
+    
+    retos = list(retos_col.find({"estado": "pendiente"}))
+    return render_template("jugar.html", saldo=tokens_oro, saldo_plata=tokens_plata, retos=retos)
 
 @app.route("/lanzar", methods=["GET", "POST"])
 def lanzar():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para lanzar retos")
-        return redirect(url_for("index"))
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para lanzar retos")
+        return redirect(url_for("index"))
 
-    if request.method == "POST":
-        pregunta = request.form.get("pregunta")
-        retado = request.form.get("retado")
-        modo = request.form.get("modo")
+    if request.method == "POST":
+        pregunta = request.form.get("pregunta")
+        retado = request.form.get("retado")
+        modo = request.form.get("modo")
 
-        try:
-            tokens = int(request.form.get("tokens", 1))
-        except ValueError:
-            tokens = 1
+        try:
+            tokens = int(request.form.get("tokens", 1))
+        except ValueError:
+            tokens = 1
 
-        if not pregunta or not retado or not modo:
-            flash("Completa todos los campos para lanzar un reto")
-            return redirect(url_for("lanzar"))
+        if not pregunta or not retado or not modo:
+            flash("Completa todos los campos para lanzar un reto")
+            return redirect(url_for("lanzar"))
 
-        if tokens < 1 or tokens > tokens_oro:
-            flash("No tienes tokens oro suficientes")
-            return redirect(url_for("lanzar"))
+        if tokens < 1 or tokens > tokens_oro:
+            flash("No tienes tokens oro suficientes")
+            return redirect(url_for("lanzar"))
 
-        retos_col.insert_one({
-            "player": alias,
-            "pregunta": pregunta,
-            "retado": retado,
-            "modo": modo,
-            "tokens": tokens,
-            "fecha": datetime.now(),
-            "estado": "pendiente",
-            "votos": []
-        })
+        retos_col.insert_one({
+            "player": alias,
+            "pregunta": pregunta,
+            "retado": retado,
+            "modo": modo,
+            "tokens": tokens,
+            "fecha": datetime.now(),
+            "estado": "pendiente",
+            "votos": []
+        })
 
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -tokens}})
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -tokens}})
 
-        notificacion = {
-            "tipo": "reto_recibido",
-            "mensaje": f"Has sido retado por {alias} con la pregunta: '{pregunta}'",
-            "leido": False,
-            "fecha": datetime.utcnow()
-        }
+        notificacion = {
+            "tipo": "reto_recibido",
+            "mensaje": f"Has sido retado por {alias} con la pregunta: '{pregunta}'",
+            "leido": False,
+            "fecha": datetime.utcnow()
+        }
 
-        usuarios_col.update_one(
-            {"alias": retado},
-            {"$push": {"notificaciones": notificacion}}
-        )
+        usuarios_col.update_one(
+            {"alias": retado},
+            {"$push": {"notificaciones": notificacion}}
+        )
 
-        flash("Reto lanzado correctamente 🔥")
-        return redirect(url_for("lanzar"))
+        flash("Reto lanzado correctamente 🔥")
+        return redirect(url_for("lanzar"))
 
-    retos = list(retos_col.find({"player": alias}).sort("fecha", -1))
-    retos_recibidos = list(retos_col.find({"retado": alias}).sort("fecha", -1))
-    retos_publicos = list(retos_col.find({
-        "modo": "publico", "estado": "pendiente",
-        "$or": [
-            {"player": {"$ne": alias}},
-            {"retado": {"$ne": alias}}
-        ]
-    }).sort("fecha", -1))
+    retos = list(retos_col.find({"player": alias}).sort("fecha", -1))
+    retos_recibidos = list(retos_col.find({"retado": alias}).sort("fecha", -1))
+    retos_publicos = list(retos_col.find({
+        "modo": "publico", "estado": "pendiente",
+        "$or": [
+            {"player": {"$ne": alias}},
+            {"retado": {"$ne": alias}}
+        ]
+    }).sort("fecha", -1))
 
-    usuario = usuarios_col.find_one({"alias": alias})
-    notificaciones = [n for n in usuario.get("notificaciones", []) if not n.get("leido", False)]
-    retos_recibidos_pendientes = any(r["estado"] == "pendiente" for r in retos_recibidos)
+    usuario = usuarios_col.find_one({"alias": alias})
+    notificaciones = [n for n in usuario.get("notificaciones", []) if not n.get("leido", False)]
+    retos_recibidos_pendientes = any(r["estado"] == "pendiente" for r in retos_recibidos)
 
-    return render_template("lanzar.html", alias=alias, saldo=tokens_oro,
-                           retos=retos, retos_recibidos=retos_recibidos,
-                           retos_publicos=retos_publicos,
-                           notificaciones=notificaciones,
-                           retos_recibidos_pendientes=retos_recibidos_pendientes)
+    return render_template("lanzar.html", alias=alias, saldo=tokens_oro,
+                           retos=retos, retos_recibidos=retos_recibidos,
+                           retos_publicos=retos_publicos,
+                           notificaciones=notificaciones,
+                           retos_recibidos_pendientes=retos_recibidos_pendientes)
 
 @app.route("/eliminar_reto/<reto_id>", methods=["POST"])
 def eliminar_reto(reto_id):
-    alias, tokens_oro, _ = get_user_and_saldo()
-    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
+    alias, tokens_oro, _ = get_user_and_saldo()
+    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
 
-    if reto and reto["player"] == alias and reto["estado"] == "pendiente":
-        retos_col.delete_one({"_id": ObjectId(reto_id)})
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": reto["tokens"]}})
-        flash("Reto eliminado y tokens devueltos", "success")
-    else:
-        flash("No puedes eliminar este reto", "error")
+    if reto and reto["player"] == alias and reto["estado"] == "pendiente":
+        retos_col.delete_one({"_id": ObjectId(reto_id)})
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": reto["tokens"]}})
+        flash("Reto eliminado y tokens devueltos", "success")
+    else:
+        flash("No puedes eliminar este reto", "error")
 
-    return redirect(url_for("lanzar"))
+    return redirect(url_for("lanzar"))
 
 @app.route("/votar_reto/<reto_id>", methods=["POST"])
 def votar_reto(reto_id):
-    alias, tokens_oro, _ = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para votar")
-        return redirect(url_for("index"))
+    alias, tokens_oro, _ = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para votar")
+        return redirect(url_for("index"))
 
-    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
-    if not reto:
-        flash("Reto no encontrado")
-        return redirect(url_for("lanzar"))
+    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
+    if not reto:
+        flash("Reto no encontrado")
+        return redirect(url_for("lanzar"))
 
-    if reto["player"] == alias or reto["retado"] == alias:
-        flash("No puedes votar en tu propio reto")
-        return redirect(url_for("lanzar"))
+    if reto["player"] == alias or reto["retado"] == alias:
+        flash("No puedes votar en tu propio reto")
+        return redirect(url_for("lanzar"))
 
-    ganador = request.form.get("ganador")
-    if ganador not in [reto["player"], reto["retado"]]:
-        flash("Ganador inválido")
-        return redirect(url_for("lanzar"))
+    ganador = request.form.get("ganador")
+    if ganador not in [reto["player"], reto["retado"]]:
+        flash("Ganador inválido")
+        return redirect(url_for("lanzar"))
 
-    votos = reto.get("votos", [])
-    if any(v["alias"] == alias for v in votos):
-        flash("Ya has votado en este reto")
-        return redirect(url_for("lanzar"))
+    votos = reto.get("votos", [])
+    if any(v["alias"] == alias for v in votos):
+        flash("Ya has votado en este reto")
+        return redirect(url_for("lanzar"))
 
-    votos.append({"alias": alias, "ganador": ganador})
-    retos_col.update_one({"_id": reto["_id"]}, {"$set": {"votos": votos}})
+    votos.append({"alias": alias, "ganador": ganador})
+    retos_col.update_one({"_id": reto["_id"]}, {"$set": {"votos": votos}})
 
-    conteo = {reto["player"]: 0, reto["retado"]: 0}
-    for v in votos:
-        conteo[v["ganador"]] += 1
+    conteo = {reto["player"]: 0, reto["retado"]: 0}
+    for v in votos:
+        conteo[v["ganador"]] += 1
 
-    if len(votos) >= 3:
-        if conteo[reto["player"]] > conteo[reto["retado"]]:
-            ganador_final = reto["player"]
-        elif conteo[reto["retado"]] > conteo[reto["player"]]:
-            ganador_final = reto["retado"]
-        else:
-            ganador_final = None
+    if len(votos) >= 3:
+        if conteo[reto["player"]] > conteo[reto["retado"]]:
+            ganador_final = reto["player"]
+        elif conteo[reto["retado"]] > conteo[reto["player"]]:
+            ganador_final = reto["retado"]
+        else:
+            ganador_final = None
 
-        if ganador_final:
-            usuarios_col.update_one(
-                {"alias": ganador_final},
-                {"$inc": {"tokens_oro": reto["tokens"] * 2}}
-            )
-            retos_col.update_one(
-                {"_id": reto["_id"]},
-                {"$set": {"estado": f"ganador: {ganador_final}"}}
-            )
-        else:
-            usuarios_col.update_one({"alias": reto["player"]}, {"$inc": {"tokens_oro": reto["tokens"]}})
-            usuarios_col.update_one({"alias": reto["retado"]}, {"$inc": {"tokens_oro": reto["tokens"]}})
-            retos_col.update_one({"_id": reto["_id"]}, {"$set": {"estado": "empate"}})
+        if ganador_final:
+            usuarios_col.update_one(
+                {"alias": ganador_final},
+                {"$inc": {"tokens_oro": reto["tokens"] * 2}}
+            )
+            retos_col.update_one(
+                {"_id": reto["_id"]},
+                {"$set": {"estado": f"ganador: {ganador_final}"}}
+            )
+        else:
+            usuarios_col.update_one({"alias": reto["player"]}, {"$inc": {"tokens_oro": reto["tokens"]}})
+            usuarios_col.update_one({"alias": reto["retado"]}, {"$inc": {"tokens_oro": reto["tokens"]}})
+            retos_col.update_one({"_id": reto["_id"]}, {"$set": {"estado": "empate"}})
 
-    flash("Tu voto ha sido registrado ✅")
-    return redirect(url_for("lanzar"))
+    flash("Tu voto ha sido registrado ✅")
+    return redirect(url_for("lanzar"))
 
 @app.route('/aceptar_reto/<reto_id>', methods=['POST'])
 def aceptar_reto_con_id(reto_id):
-    alias, tokens_oro, _ = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para aceptar retos")
-        return redirect(url_for("index"))
-    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
-    if not reto:
-        flash("Reto no encontrado")
-        return redirect(url_for("lanzar"))
+    alias, tokens_oro, _ = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para aceptar retos")
+        return redirect(url_for("index"))
+    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
+    if not reto:
+        flash("Reto no encontrado")
+        return redirect(url_for("lanzar"))
 
-    if reto["retado"] != alias:
-        flash("No tienes permiso para aceptar este reto")
-        return redirect(url_for("lanzar"))
+    if reto["retado"] != alias:
+        flash("No tienes permiso para aceptar este reto")
+        return redirect(url_for("lanzar"))
 
-    if tokens_oro < reto["tokens"]:
-        flash("No tienes tokens oro suficientes para aceptar este reto")
-        return redirect(url_for("lanzar"))
+    if tokens_oro < reto["tokens"]:
+        flash("No tienes tokens oro suficientes para aceptar este reto")
+        return redirect(url_for("lanzar"))
 
-    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -reto["tokens"]}})
-    flash("Reto aceptado. ¡Ahora pueden comenzar!", "success")
-    return redirect(url_for("lanzar"))
+    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -reto["tokens"]}})
+    flash("Reto aceptado. ¡Ahora pueden comenzar!", "success")
+    return redirect(url_for("lanzar"))
 
 @app.route("/reclamar_victoria/<reto_id>", methods=["POST"])
 def reclamar_victoria(reto_id):
-    alias, _, _ = get_user_and_saldo()
-    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
+    alias, _, _ = get_user_and_saldo()
+    reto = retos_col.find_one({"_id": ObjectId(reto_id)})
 
-    if not reto:
-        flash("Reto no encontrado", "error")
-        return redirect(url_for("lanzar"))
+    if not reto:
+        flash("Reto no encontrado", "error")
+        return redirect(url_for("lanzar"))
 
-    if f"ganador: {alias}" != reto.get("estado", ""):
-        flash("Solo el ganador puede reclamar la victoria", "error")
-        return redirect(url_for("lanzar"))
+    if f"ganador: {alias}" != reto.get("estado", ""):
+        flash("Solo el ganador puede reclamar la victoria", "error")
+        return redirect(url_for("lanzar"))
 
-    flash("🎉 ¡Felicidades! Has reclamado tu victoria. ¡Disfruta tus tokens!", "success")
-    return redirect(url_for("lanzar"))
+    flash("🎉 ¡Felicidades! Has reclamado tu victoria. ¡Disfruta tus tokens!", "success")
+    return redirect(url_for("lanzar"))
 # ---------------------------------------------------------------------------
 @app.route("/hot_roulette")
 def hot_roulette():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para jugar")
-        return redirect(url_for("login"))
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para jugar")
+        return redirect(url_for("login"))
 
-    retos = [
-        "Besa a alguien en la mejilla",
-        "Envía un emoji sugerente a tu crush",
-        "Cuenta tu fantasía más loca",
-        "Haz una imitación sexy",
-        "Verdad o reto candente",
-        "Envía un piropo atrevido",
-        "Haz un mini striptease (ropa permitida 😅)",
-        "Confiesa tu guilty pleasure",
-        "Haz una mirada seductora",
-        "Haz un reto que el grupo elija 🔥",
-        "Envía un audio sexy por WhatsApp",
-        "Baila sensualmente por 30 segundos",
-        "Escribe un poema erótico en 2 minutos",
-        "Manda la foto de tu mejor ángulo",
-        "Haz una pose de modelo seductora",
-    ]
+    retos = [
+        "Besa a alguien en la mejilla",
+        "Envía un emoji sugerente a tu crush",
+        "Cuenta tu fantasía más loca",
+        "Haz una imitación sexy",
+        "Verdad o reto candente",
+        "Envía un piropo atrevido",
+        "Haz un mini striptease (ropa permitida 😅)",
+        "Confiesa tu guilty pleasure",
+        "Haz una mirada seductora",
+        "Haz un reto que el grupo elija 🔥",
+        "Envía un audio sexy por WhatsApp",
+        "Baila sensualmente por 30 segundos",
+        "Escribe un poema erótico en 2 minutos",
+        "Manda la foto de tu mejor ángulo",
+        "Haz una pose de modelo seductora",
+    ]
 
-    publicaciones = list(publicaciones_col.find().sort("fecha", -1).limit(10))
-    return render_template(
-        "hot_roulette.html",
-        retos=retos,
-        publicaciones=publicaciones,
-        alias=alias
-    )
+    publicaciones = list(publicaciones_col.find().sort("fecha", -1).limit(10))
+    return render_template(
+        "hot_roulette.html",
+        retos=retos,
+        publicaciones=publicaciones,
+        alias=alias
+    )
 
 @app.route("/hot_roulette/girar", methods=["POST"])
 def hot_roulette_girar():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify({"error": "Debes iniciar sesión"}), 401
-    
-    retos = [
-        "Besa a alguien en la mejilla",
-        "Envía un emoji sugerente a tu crush",
-        "Cuenta tu fantasía más loca",
-        "Haz una imitación sexy",
-        "Verdad o reto candente",
-        "Envía un piropo atrevido",
-        "Haz un mini striptease (ropa permitida 😅)",
-        "Confiesa tu guilty pleasure",
-        "Haz una mirada seductora",
-        "Haz un reto que el grupo elija 🔥",
-        "Envía un audio sexy por WhatsApp",
-        "Baila sensualmente por 30 segundos",
-        "Escribe un poema erótico en 2 minutos",
-        "Manda la foto de tu mejor ángulo",
-        "Haz una pose de modelo seductora",
-    ]
-    reto = choice(retos)
-    return jsonify({"reto": reto})
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify({"error": "Debes iniciar sesión"}), 401
+    
+    retos = [
+        "Besa a alguien en la mejilla",
+        "Envía un emoji sugerente a tu crush",
+        "Cuenta tu fantasía más loca",
+        "Haz una imitación sexy",
+        "Verdad o reto candente",
+        "Envía un piropo atrevido",
+        "Haz un mini striptease (ropa permitida 😅)",
+        "Confiesa tu guilty pleasure",
+        "Haz una mirada seductora",
+        "Haz un reto que el grupo elija 🔥",
+        "Envía un audio sexy por WhatsApp",
+        "Baila sensualmente por 30 segundos",
+        "Escribe un poema erótico en 2 minutos",
+        "Manda la foto de tu mejor ángulo",
+        "Haz una pose de modelo seductora",
+    ]
+    reto = choice(retos)
+    return jsonify({"reto": reto})
 
 @app.route("/hot_roulette/publicar_reto", methods=["POST"])
 def publicar_reto():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-    data = request.get_json()
-    reto = data.get("reto", "").strip()
-    if not reto:
-        return jsonify(success=False, message="Reto vacío")
-    publicaciones_col.insert_one({
-        "usuario": alias,
-        "reto": reto,
-        "fecha": datetime.now(),
-        "likes": 0,
-        "dislikes": 0
-    })
-    return jsonify(success=True, message="Reto publicado")
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    data = request.get_json()
+    reto = data.get("reto", "").strip()
+    if not reto:
+        return jsonify(success=False, message="Reto vacío")
+    publicaciones_col.insert_one({
+        "usuario": alias,
+        "reto": reto,
+        "fecha": datetime.now(),
+        "likes": 0,
+        "dislikes": 0
+    })
+    return jsonify(success=True, message="Reto publicado")
 
 @app.route("/hot_roulette/reaccion", methods=["POST"])
 def reaccion_roulette():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-    data = request.get_json()
-    reto_id = data.get("retoId")
-    tipo = data.get("tipo")
-    if tipo not in ["like", "dislike"]:
-        return jsonify(success=False, message="Reacción no válida"), 400
-    update_field = "likes" if tipo == "like" else "dislikes"
-    publicaciones_col.update_one(
-        {"_id": ObjectId(reto_id)},
-        {"$inc": {update_field: 1}}
-    )
-    return jsonify(success=True)
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    data = request.get_json()
+    reto_id = data.get("retoId")
+    tipo = data.get("tipo")
+    if tipo not in ["like", "dislike"]:
+        return jsonify(success=False, message="Reacción no válida"), 400
+    update_field = "likes" if tipo == "like" else "dislikes"
+    publicaciones_col.update_one(
+        {"_id": ObjectId(reto_id)},
+        {"$inc": {update_field: 1}}
+    )
+    return jsonify(success=True)
 
 # 💡 CORRECCIÓN: Ruta renombrada a aceptar_reto_roulette para evitar conflicto
 @app.route("/hot_roulette/aceptar_reto_roulette", methods=["POST"])
 def aceptar_reto_roulette():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-    data = request.get_json()
-    publicaciones_col.update_one(
-        {"_id": ObjectId(data["retoId"])},
-        {"$set": {"aceptado_por": alias, "fecha_aceptado": datetime.now()}}
-    )
-    return jsonify(success=True, message="Reto aceptado")
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    data = request.get_json()
+    publicaciones_col.update_one(
+        {"_id": ObjectId(data["retoId"])},
+        {"$set": {"aceptado_por": alias, "fecha_aceptado": datetime.now()}}
+    )
+    return jsonify(success=True, message="Reto aceptado")
 
 @app.route("/hot_roulette/cumplir_reto", methods=["POST"])
 def cumplir_reto():
-    alias, _, _ = get_user_and_saldo()
-    data = request.get_json()
-    imagen_data = data.get("imagen")
-    reto_id = data.get("retoId")
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-    if not imagen_data:
-        return jsonify(success=False, message="Imagen no encontrada")
-    try:
-        header, b64 = imagen_data.split(",", 1)
-        ext = header.split("/")[1].split(";")[0]
-        if ext.lower() not in ALLOWED_IMAGE:
-            return jsonify(success=False, message="Formato de imagen no permitido"), 400
-        
-        # ¡CORRECCIÓN! Usamos GridFS para guardar la imagen
-        file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}.{ext}", content_type=f"image/{ext}")
-        ruta_relativa = str(file_id)
+    alias, _, _ = get_user_and_saldo()
+    data = request.get_json()
+    imagen_data = data.get("imagen")
+    reto_id = data.get("retoId")
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    if not imagen_data:
+        return jsonify(success=False, message="Imagen no encontrada")
+    try:
+        header, b64 = imagen_data.split(",", 1)
+        ext = header.split("/")[1].split(";")[0]
+        if ext.lower() not in ALLOWED_IMAGE:
+            return jsonify(success=False, message="Formato de imagen no permitido"), 400
+        
+        # ¡CORRECCIÓN! Usamos GridFS para guardar la imagen
+        file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}.{ext}", content_type=f"image/{ext}")
+        ruta_relativa = str(file_id)
 
-        publicaciones_col.update_one(
-            {"_id": ObjectId(reto_id)},
-            {"$set": {
-                "imagen_cumplimiento": ruta_relativa,
-                "cumplido_por": alias,
-                "fecha_cumplido": datetime.now()
-            }}
-        )
-        return jsonify(success=True, message="Reto cumplido registrado")
-    except Exception as e:
-        return jsonify(success=False, message=f"Error: {str(e)}")
+        publicaciones_col.update_one(
+            {"_id": ObjectId(reto_id)},
+            {"$set": {
+                "imagen_cumplimiento": ruta_relativa,
+                "cumplido_por": alias,
+                "fecha_cumplido": datetime.now()
+            }}
+        )
+        return jsonify(success=True, message="Reto cumplido registrado")
+    except Exception as e:
+        return jsonify(success=False, message=f"Error: {str(e)}")
 
 @app.route("/hot_roulette/eliminar_cumplido", methods=["POST"])
 def eliminar_cumplido():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-    data = request.get_json()
-    reto_id = data.get("retoId")
-    if not reto_id:
-        return jsonify(success=False, message="ID del reto no proporcionado"), 400
-    publicacion = publicaciones_col.find_one({"_id": ObjectId(reto_id)})
-    if not publicacion:
-        return jsonify(success=False, message="Reto no encontrado"), 404
-    if publicacion.get("cumplido_por") != alias:
-        return jsonify(success=False, message="No tienes permiso para eliminar este reto"), 403
-
-    # ¡CORRECCIÓN! Eliminamos de GridFS
-    if "imagen_cumplimiento" in publicacion:
-        try:
-            fs.delete(ObjectId(publicacion["imagen_cumplimiento"]))
-        except Exception as e:
-            print(f"Error al eliminar de GridFS: {e}")
-
-    publicaciones_col.delete_one({"_id": ObjectId(reto_id)})
-    return jsonify(success=True, message="Reto cumplido eliminado exitosamente")
-
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+    data = request.get_json()
+    reto_id = data.get("retoId")
+    if not reto_id:
+        return jsonify(success=False, message="ID del reto no proporcionado"), 400
+    publicacion = publicaciones_col.find_
 # ---------------------------------------------------------------------------
 # Más rutas (lanzar retos, votar, etc.)
 # ---------------------------------------------------------------------------
@@ -919,6 +906,7 @@ def eliminar_cumplido():
 # ---------------------------------------------------------------------------
 # Juego 4 – HotCopy
 # --------------------------------------------------------------------------
+
 
 def asegurar_reacciones(fotos):
     """Asegura que cada foto tenga reacciones inicializadas"""
@@ -1748,7 +1736,6 @@ from bson.objectid import ObjectId
 from uuid import uuid4
 from datetime import datetime
 import os
-# Se requiere importar GridFSBucket
 from gridfs import GridFSBucket
 
 # Suponiendo que estas variables están definidas en tu app principal
@@ -1785,7 +1772,7 @@ def verificar():
         if selfie_ine:
             selfie_ine_id = fs.put(selfie_ine, filename=f"{alias}_selfie_ine", content_type=selfie_ine.content_type)
         
-        # Marcar como verificado en Mongo
+        # Marcar como verificado en Mongo y guardar los datos de verificación
         usuarios_col.update_one(
             {"alias": alias},
             {"$set": {
@@ -1814,7 +1801,6 @@ def retiro():
         flash("Debes iniciar sesión para retirar tokens.")
         return redirect(url_for("login"))
 
-    # Obtener usuario
     user = usuarios_col.find_one({"alias": alias})
     if not user:
         flash("Usuario no encontrado.")
@@ -1823,7 +1809,6 @@ def retiro():
     oro = int(user.get("tokens_oro", 0))
     verificado = user.get("verificado", False)
 
-    # Si no está verificado → redirigir a verificación
     if not verificado:
         flash("Debes verificar tu identidad antes de retirar.")
         return redirect(url_for("verificar"))
@@ -1833,14 +1818,14 @@ def retiro():
             flash("Necesitas mínimo 500 tokens para retirar.")
             return redirect(url_for("retiro"))
 
-        nombre = request.form.get("nombre")
-        cuenta_bancaria = request.form.get("cuenta_bancaria")
-        correo = request.form.get("correo")
+        # El nombre, cuenta y correo ya están en el perfil del usuario, los recuperamos de ahí
+        nombre = user.get("nombre")
+        cuenta_bancaria = user.get("cuenta_bancaria")
+        correo = user.get("correo")
 
         # Calcular dinero
         monto_mxn = (oro // 500) * 100
 
-        # Guardar en retiro_col
         retiros_col.insert_one({
             "alias": alias,
             "nombre": nombre,
@@ -1848,17 +1833,16 @@ def retiro():
             "correo": correo,
             "tokens_retirados": oro,
             "monto_mxn": monto_mxn,
-            "estado": "pendiente"
+            "estado": "pendiente",
+            "timestamp": datetime.now() # Agregamos el timestamp
         })
 
-        # Descontar tokens a 0
         usuarios_col.update_one({"alias": alias}, {"$set": {"tokens_oro": 0}})
 
         flash(f"💰 Solicitud de retiro enviada: ${monto_mxn} MXN en 72h.")
         return redirect(url_for("perfiles"))
 
     return render_template("retiro_tokens.html", oro=oro)
-
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 if __name__ == '__main__':
