@@ -1,4 +1,4 @@
-/* ==== RESET Y FUENTES ==== */
+  /* ==== RESET Y FUENTES ==== */
     * {
         margin: 0;
         padding: 0;
@@ -6,9 +6,11 @@
     }
     
     body {
-        background-color: #FAFAFA; /* Fondo blanco/gris claro como Instagram */
+        background-color: #FAFAFA;
+        /* Fondo blanco/gris claro como Instagram */
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        color: #262626; /* Color de texto oscuro */
+        color: #262626;
+        /* Color de texto oscuro */
         min-height: 100vh;
     }
 
@@ -22,7 +24,8 @@
     .titulo {
         text-align: center;
         font-size: 2.5rem;
-        color: #E1306C; /* Un rosa vibrante para el título */
+        color: #E1306C;
+        /* Un rosa vibrante para el título */
         margin-bottom: 2rem;
     }
 
@@ -61,7 +64,7 @@
         width: 100%;
         height: 100%;
         overflow: auto;
-        background-color: rgba(0,0,0,0.4);
+        background-color: rgba(0, 0, 0, 0.4);
         padding-top: 60px;
     }
 
@@ -83,7 +86,8 @@
         cursor: pointer;
     }
 
-    .close:hover, .close:focus {
+    .close:hover,
+    .close:focus {
         color: #E1306C;
         text-decoration: none;
     }
@@ -150,8 +154,13 @@
         background: #E1306C;
     }
 
-    .btn-futurista.rojo:hover { background: #E91E63; }
-    .btn-futurista.verde:hover { background: #C13584; }
+    .btn-futurista.rojo:hover {
+        background: #E91E63;
+    }
+
+    .btn-futurista.verde:hover {
+        background: #C13584;
+    }
 
     /* ==== FILTROS ==== */
     .filtros {
@@ -182,13 +191,15 @@
         color: #262626;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         overflow-wrap: break-word;
-        background-color: #FFFFFF; /* Color de fondo por defecto */
+        background-color: #FFFFFF;
+        /* Color de fondo por defecto */
         border: 1px solid #DBDBDB;
     }
 
     .card-header {
         display: flex;
-        justify-content: space-between; /* Alinea los elementos a los extremos */
+        justify-content: space-between;
+        /* Alinea los elementos a los extremos */
         align-items: center;
         gap: 10px;
     }
@@ -209,7 +220,8 @@
         white-space: pre-wrap;
         text-align: justify;
         padding: 0 5px;
-        color: inherit; /* Hereda el color de la tarjeta para que se adapte */
+        color: inherit;
+        /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .conf-media-container {
@@ -232,6 +244,7 @@
         background: #F8F8F8;
     }
     
+    /* ==== REACCIONES ==== */
     .reacciones {
         margin-top: 15px;
         display: flex;
@@ -262,6 +275,7 @@
         color: #E1306C;
     }
 
+    /* ==== COMENTARIOS ==== */
     .comentarios-container {
         margin-top: 15px;
     }
@@ -279,7 +293,8 @@
 
     .comentario-info p {
         margin: 0;
-        color: inherit; /* Hereda el color de la tarjeta para que se adapte */
+        color: inherit;
+        /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .comentario-box {
@@ -300,7 +315,8 @@
         color: #262626;
     }
     
-    .enviar-btn, .eliminar-btn {
+    .enviar-btn,
+    .eliminar-btn {
         background: #E1306C;
         color: #fff;
         border: none;
@@ -312,7 +328,8 @@
         transition: transform 0.2s;
     }
     
-    .enviar-btn:hover, .eliminar-btn:hover {
+    .enviar-btn:hover,
+    .eliminar-btn:hover {
         transform: scale(1.1);
     }
     
