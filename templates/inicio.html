@@ -12,9 +12,10 @@
     }
 
     body {
-        background: linear-gradient(135deg, #1e0a3b, #4a1f6a, #d4278a);
+        /* Fondo blanco para un diseño limpio */
+        background-color: #FAFAFA;
         font-family: 'Poppins', sans-serif;
-        color: #fff;
+        color: #262626; /* Texto en un tono oscuro */
         min-height: 100vh;
     }
 
@@ -22,19 +23,21 @@
     .top-banner {
         position: fixed;
         top: 0; left: 0; right: 0;
-        background: linear-gradient(90deg, #d4278a, #ff66b2);
+        background-color: #FFFFFF; /* Fondo del header blanco */
+        border-bottom: 1px solid #DBDBDB; /* Borde sutil gris */
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 12px 20px;
-        color: white;
+        color: #262626;
         font-weight: bold;
-        box-shadow: 0 2px 8px rgba(212, 39, 138, 0.6);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
         z-index: 10000;
     }
 
     .top-banner .logo {
         font-size: 1.4rem;
+        color: #E1306C; /* Logo en rosa */
     }
 
     .top-banner .menu-icon {
@@ -50,7 +53,7 @@
     }
 
     .nav-links a {
-        color: #fff;
+        color: #E1306C; /* Enlaces de navegación en rosa */
         font-weight: 600;
         text-decoration: none;
         padding: 8px 15px;
@@ -59,7 +62,7 @@
     }
 
     .nav-links a:hover {
-        background: rgba(255,255,255,0.2);
+        background-color: #F8F8F8; /* Fondo gris claro en hover */
     }
 
     /* ==== CONTENEDOR PRINCIPAL ==== */
@@ -70,23 +73,23 @@
         justify-content: center;
         min-height: 90vh;
         text-align: center;
-        padding-top: 80px; /* espacio para header */
+        padding-top: 80px;
     }
 
     .titulo {
         font-size: 2.5rem;
         margin-bottom: 30px;
-        color: #ff66b2;
-        text-shadow: 0 0 10px #ff66b2;
+        color: #262626; /* Título en negro */
+        text-shadow: none; /* Eliminamos el neón */
     }
 
     .bienvenida {
         font-size: 1.2rem;
         margin-bottom: 40px;
-        color: #fff;
+        color: #737373; /* Texto de bienvenida en gris */
     }
 
-    /* ==== BOTONERA NEÓN ==== */
+    /* ==== BOTONERA ==== */
     .botonera {
         display: flex;
         flex-direction: column;
@@ -97,24 +100,24 @@
     }
 
     .boton-menu {
-        background: #1e0a3b;
-        color: #ff66b2;
+        background: #E1306C; /* Fondo del botón en rosa */
+        color: #fff;
         padding: 15px 25px;
-        border: 2px solid #ff66b2;
+        border: none;
         border-radius: 10px;
         font-size: 1.1rem;
         font-weight: bold;
         text-decoration: none;
         text-align: center;
-        box-shadow: 0 0 15px #ff66b2;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         width: 100%;
     }
 
     .boton-menu:hover {
         transform: scale(1.03);
-        box-shadow: 0 0 25px #ff66b2;
-        background: #4a1f6a;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        background: #C13584; /* Un tono de rosa un poco más oscuro en hover */
     }
 
     .boton-menu i {
@@ -131,10 +134,10 @@
             top: 60px;
             right: 10px;
             flex-direction: column;
-            background: #1e0a3b;
+            background-color: #FFFFFF;
             padding: 15px;
             border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             gap: 10px;
         }
 
@@ -144,6 +147,7 @@
 
         .top-banner .menu-icon {
             display: block;
+            color: #E1306C; /* Icono del menú en rosa */
         }
 
         .botonera {
