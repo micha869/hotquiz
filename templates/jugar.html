@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Bienvenido a HotQuiz{% endblock %}
+{% block title %}🔥 Casino HotQuiz{% endblock %}
 
 {% block content %}
 <style>
@@ -10,7 +10,7 @@
         padding: 0;
         box-sizing: border-box;
     }
-    
+
     body {
         /* Fondo blanco/gris claro como Instagram */
         background-color: #FAFAFA;
@@ -23,7 +23,7 @@
     }
 
     /* ==== CONTENEDOR PRINCIPAL ==== */
-    .index-container {
+    .casino-container {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -33,15 +33,15 @@
         border: 1px solid #DBDBDB;
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        max-width: 400px;
+        max-width: 450px;
         width: 90%; /* Ancho responsivo */
     }
-
+    
     /* ==== TÍTULOS Y TEXTO ==== */
     .titulo {
-        font-size: 2.5rem;
+        font-size: 2rem;
         margin-bottom: 0.5rem;
-        color: #E1306C; /* Un rosa vibrante para el título */
+        color: #E1306C; /* Rosa vibrante para el título */
     }
 
     .subtitulo {
@@ -53,22 +53,36 @@
     .saludo {
         font-size: 1.2rem;
         color: #262626;
-        margin-top: 1.5rem;
+        margin-top: 1rem;
         margin-bottom: 1rem;
     }
 
     .saludo strong {
-        color: #E1306C; /* Alias en rosa */
+        color: #E1306C;
     }
 
-    /* ==== BOTONERA ==== */
-    .botonera {
+    /* ==== BOTONERA Y GRID DE JUEGOS ==== */
+    .botonera, .game-grid {
         display: flex;
         flex-direction: column;
         gap: 1rem;
         width: 100%;
     }
 
+    .game-grid {
+        display: grid;
+        grid-template-columns: 1fr; /* Una columna por defecto */
+        gap: 1rem;
+        width: 100%;
+    }
+
+    @media (min-width: 576px) {
+        .game-grid {
+            grid-template-columns: repeat(2, 1fr); /* Dos columnas en dispositivos más grandes */
+        }
+    }
+
+    /* ==== BOTONES ==== */
     .boton-menu {
         display: block;
         padding: 0.8rem 1.5rem;
@@ -76,50 +90,107 @@
         font-size: 1rem;
         font-weight: 600;
         text-decoration: none;
-        transition: background-color 0.3s ease;
+        transition: background-color 0.3s ease, transform 0.2s ease;
     }
     
-    /* Estilos para los botones específicos */
-    .boton-login {
+    .boton-login, .boton-registro {
         background: #E1306C;
         color: white;
     }
 
-    .boton-login:hover {
-        background: #C13584; /* Tono de rosa más oscuro en hover */
-    }
-
-    .boton-registro {
+    .boton-login:hover, .boton-registro:hover {
         background: #C13584;
-        color: white;
     }
 
-    .boton-registro:hover {
-        background: #A82E72;
+    .game-card-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: #F8F8F8;
+        border: 1px solid #DBDBDB;
+        border-radius: 8px;
+        padding: 1rem;
+        color: #262626;
+        text-decoration: none;
+        transition: transform 0.2s ease;
     }
 
-    .boton-retos {
-        background: #E1306C;
-        color: white;
+    .game-card-link:hover {
+        transform: scale(1.03);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
     
-    .boton-retos:hover {
-        background: #C13584;
+    .emoji {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
     }
+
+    .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+        color: #E1306C;
+    }
+
+    .card-text {
+        font-size: 0.8rem;
+        color: #8E8E8E;
+    }
+
 </style>
 
-<div class="index-container">
+<div class="casino-container">
     <h1 class="titulo">🔥 HotQuiz</h1>
     <p class="subtitulo">¡Bienvenido a la mejor experiencia de quizzes y confesiones!</p>
 
-    <div class="botonera">
-        {% if not session.get('alias') %}
+    {% if not session.get('alias') %}
+        <div class="botonera">
             <a href="{{ url_for('login') }}" class="boton-menu boton-login">🔐 Iniciar sesión</a>
             <a href="{{ url_for('registro') }}" class="boton-menu boton-registro">📝 Registrarse</a>
-        {% else %}
-            <p class="saludo">👋 Hola, <strong>{{ session.alias }}</strong></p>
-            <a href="{{ url_for('lanzar') }}" class="boton-menu boton-retos">🚀 Ir a Retos</a>
-        {% endif %}
-    </div>
+        </div>
+    {% else %}
+        <p class="saludo">👋 Hola, <strong>{{ session.alias }}</strong></p>
+        <p class="subtitulo">Tokens Oro: <strong>{{ saldo }}</strong> | Plata: <strong>{{ saldo_plata }}</strong></p>
+
+        <h2 class="titulo" style="font-size: 1.5rem; margin-top: 1.5rem;">🎮 Juegos Calientes</h2>
+
+        <div class="game-grid">
+            <a href="{{ url_for('lanzar') }}" class="game-card-link">
+                <div class="emoji">🚀</div>
+                <h3 class="card-title">Lanzar Retos</h3>
+                <p class="card-text">Crea un reto atrevido para el público.</p>
+            </a>
+            
+            <a href="{{ url_for('foto_hot') }}" class="game-card-link">
+                <div class="emoji">🔥</div>
+                <h3 class="card-title">¿Quién calienta más?</h3>
+                <p class="card-text">Sube tu foto más hot.</p>
+            </a>
+
+            <a href="{{ url_for('audio_hot') }}" class="game-card-link">
+                <div class="emoji">🎙️</div>
+                <h3 class="card-title">Susurra y Gana</h3>
+                <p class="card-text">Graba tu voz más sexy.</p>
+            </a>
+
+            <a href="{{ url_for('hot_roulette') }}" class="game-card-link">
+                <div class="emoji">🎲</div>
+                <h3 class="card-title">Hot Roulette</h3>
+                <p class="card-text">Gira la ruleta: ¿Verdad o Reto?</p>
+            </a>
+
+            <a href="{{ url_for('hotcopy') }}" class="game-card-link">
+                <div class="emoji">📸</div>
+                <h3 class="card-title">HotCopy</h3>
+                <p class="card-text">Imita la pose más provocadora.</p>
+            </a>
+            
+            <a href="{{ url_for('adivina') }}" class="game-card-link">
+                <div class="emoji">🕵️‍♀️</div>
+                <h3 class="card-title">¿Quién lo dijo?</h3>
+                <p class="card-text">Adivina la mente perversa detrás de la confesión.</p>
+            </a>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}
