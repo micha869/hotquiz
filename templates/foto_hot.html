@@ -151,7 +151,7 @@
                     <div class="foto-block">
                         <p><strong>{{ d.player }}</strong></p>
                         {% if d.player_image %}
-                            <img src="{{ url_for('static', filename=d.player_image) }}" alt="Foto de {{ d.player }}">
+                            <img src="{{ url_for('serve_media', file_id=d.player_image) }}" alt="Foto de {{ d.player }}">
                             <p>👍 {{ d.player_votes }} • 💰 {{ d.player_tokens }}</p>
                             <div class="reactions">
                                 <button onclick="votar('{{ d._id }}','player')">Votar</button>
@@ -173,7 +173,7 @@
                         {% if d.rival %}
                             <p><strong>{{ d.rival }}</strong></p>
                             {% if d.rival_image %}
-                                <img src="{{ url_for('static', filename=d.rival_image) }}" alt="Foto de {{ d.rival }}">
+                                <img src="{{ url_for('serve_media', file_id=d.rival_image) }}" alt="Foto de {{ d.rival }}">
                                 <p>👍 {{ d.rival_votes }} • 💰 {{ d.rival_tokens }}</p>
                                 <div class="reactions">
                                     <button onclick="votar('{{ d._id }}','rival')">Votar</button>

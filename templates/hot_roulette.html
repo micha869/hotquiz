@@ -133,7 +133,7 @@
 
                     {% if pub.cumplido_por %}
                         <p style="color:#00fff7; font-size: 0.9em; margin-top: 5px;">🎉 Cumplido por {{ pub.cumplido_por }}</p>
-                        <img src="{{ url_for('static', filename=pub.imagen_cumplimiento) }}">
+                        <img src="{{ url_for('serve_media', file_id=pub.imagen_cumplimiento) }}">
                     {% elif pub.aceptado_por == alias %}
                         <div style="margin-top:10px;">
                             <label style="display:block; margin-bottom:5px;">📷 Sube tu foto como prueba:</label>

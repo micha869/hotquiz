@@ -7,10 +7,9 @@
 <div class="perfiles-container">
     {% for perfil in perfiles %}
     <div class="card-perfil">
-        <img src="{{ url_for('static', filename='avatars/' ~ perfil.avatar) }}" alt="Avatar" class="avatar-perfil">
+        <img src="{{ url_for('serve_avatar', file_id=perfil.avatar_id) }}" alt="Avatar" class="avatar-perfil">
 
         {% if perfil.usuario == me %}
-        <!-- Formulario para cambiar avatar -->
         <form action="{{ url_for('cambiar_avatar') }}" method="POST" enctype="multipart/form-data" class="form-avatar">
             <label for="avatar_{{ loop.index }}" class="btn-cambiar-avatar">Cambiar avatar</label>
             <input type="file" name="avatar" id="avatar_{{ loop.index }}" accept=".png,.jpg,.jpeg" style="display:none" onchange="this.form.submit()">
@@ -28,14 +27,11 @@
 
         {% if perfil.usuario == me %}
             {% if not perfil.verificado %}
-                <!-- Botón para verificar identidad -->
                 <a href="{{ url_for('verificar') }}" class="btn-verificar">🔒 Verificar identidad</a>
             {% else %}
-                <!-- Botón para retirar tokens -->
                 <a href="{{ url_for('retiro') }}" class="btn-retiro">💰 Retirar tokens</a>
             {% endif %}
         {% else %}
-            <!-- Botones de seguir / dejar de seguir -->
             {% if perfil.is_following %}
                 <form method="POST" action="{{ url_for('unfollow', usuario=perfil.usuario) }}">
                     <button class="btn-unfollow">Dejar de seguir</button>
@@ -45,7 +41,6 @@
                     <button class="btn-follow">Seguir</button>
                 </form>
             {% endif %}
-            <!-- Aquí está la corrección: el parámetro es target, no usuario -->
             <a class="btn-chat" href="{{ url_for('chat', target=perfil.usuario) }}">💬 Chat</a>
         {% endif %}
     </div>

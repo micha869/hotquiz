@@ -2,27 +2,26 @@
 """
 HotQuiz – App principal
 """
-from flask import Flask, render_template, session, redirect, url_for, flash, request
+from flask import Flask, render_template, session, redirect, url_for, flash, request, send_file, jsonify
 from flask_socketio import SocketIO, send, emit, join_room, leave_room
 from dotenv import load_dotenv
 load_dotenv()
-from flask import flash
 from werkzeug.utils import secure_filename
 from uuid import uuid4
 
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
 from pymongo import MongoClient
 from bson.objectid import ObjectId
-from datetime import timedelta
+from datetime import timedelta, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-from pymongo import MongoClient
 import re
 from collections import Counter
 import hashlib
 import time
 import pusher
-
+from gridfs import GridFSBucket
+import base64
+import certifi
 
 # ---------------------------------------------------------------------------
 # Config Flask + Mongo
@@ -31,31 +30,30 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
 app.permanent_session_lifetime = timedelta(days=30)  # duración de la cookie
 socketio = SocketIO(app)
-# Inicializa CSRF protection después de crear app y definir secret_key
-client = MongoClient(os.getenv("MONGODB_URI"))
+client = MongoClient(os.getenv("MONGODB_URI"), tlsCAFile=certifi.where())
 db = client.hotquiz
+fs = GridFSBucket(db)
 
-usuarios_col     = db.usuarios
-confesiones_col  = db.confesiones
-retos_col        = db.retos
-fotos_col        = db.fotos_hot
-audios_col       = db.audios_hot
-roulette_col     = db.roulette
-hotcopy_col      = db.hotcopy
-adivina_col      = db.adivina
+usuarios_col = db.usuarios
+confesiones_col = db.confesiones
+retos_col = db.retos
+fotos_col = db.fotos_hot
+audios_col = db.audios_hot
+roulette_col = db.roulette
+hotcopy_col = db.hotcopy
+adivina_col = db.adivina
 publicaciones_col = db.publicaciones
-Counter_col       = db.Counter
-compras_col       = db.compras
-reacciones_col    = db.reacciones
-comenarios_hot_col = db.comentarios_hot
-comentarios_col  =db.comentarios
+Counter_col = db.Counter
+compras_col = db.compras
+reacciones_col = db.reacciones
+comentarios_hot_col = db.comentarios_hot
+comentarios_col = db.comentarios
 donaciones_col = db.donaciones_tokens
 hotreels_col = db.hotreels
 retiros_col = db.retiros 
 mensajes_col = db.mensajes
 
 # Configuración de Pusher (Chat)
-
 pusher_client = pusher.Pusher(
     app_id=os.getenv("PUSHER_APP_ID", "2031513"),
     key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
@@ -67,15 +65,28 @@ pusher_client = pusher.Pusher(
 # ---------------------------------------------------------------------------
 # Archivos multimedia
 # ---------------------------------------------------------------------------
-UPLOAD_FOLDER = "static/uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
+# ¡CORRECCIÓN! Eliminamos la configuración de la carpeta UPLOAD_FOLDER local.
+# Las extensiones se mantienen para validación.
 ALLOWED_IMAGE = {"png", "jpg", "jpeg", "gif"}
 ALLOWED_AUDIO = {"mp3", "wav", "ogg", "m4a"}
+ALLOWED_VIDEO = {"mp4", "mov", "avi", "wmv", "flv", "webm"}
 
-def allowed_file(filename, allowed):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed
+def allowed_file(filename, allowed_extensions):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
+
+# ¡NUEVO! Ruta para servir archivos desde GridFS
+@app.route("/media/<file_id>")
+def serve_media(file_id):
+    try:
+        file_obj = fs.get(ObjectId(file_id))
+        return send_file(
+            file_obj,
+            download_name=file_obj.filename,
+            mimetype=file_obj.content_type
+        )
+    except Exception as e:
+        print(f"Error al servir el archivo: {e}")
+        return "Archivo no encontrado", 404
 
 # ---------------------------------------------------------------------------
 # Helper: obtener usuario y saldo
@@ -84,11 +95,11 @@ def allowed_file(filename, allowed):
 def get_user_and_saldo():
     alias = session.get("alias")
     if not alias:
-        return None, 0, 0  # ✅ Regresa 3 valores
+        return None, 0, 0
     user = usuarios_col.find_one({"alias": alias})
     oro = int(user.get("tokens_oro", 0)) if user else 0
     plata = int(user.get("tokens_plata", 0)) if user else 0
-    return alias, oro, plata  # ✅ Regresa 3 valores
+    return alias, oro, plata
 
 # ---------------------------------------------------------------------------
 # Rutas de autenticación
@@ -114,19 +125,16 @@ def registro():
         email = request.form["email"].strip()
         password = request.form["password"]
 
-        # Validación de campos vacíos
         if not alias or not email or not password:
             flash("Completa todos los campos")
             return redirect(url_for("registro"))
 
-        # Validación de términos y privacidad
         acepta_terminos = request.form.get("acepta_terminos")
         acepta_privacidad = request.form.get("acepta_privacidad")
         if not acepta_terminos or not acepta_privacidad:
             flash("Debes aceptar los términos y la política de privacidad")
             return redirect(url_for("registro"))
 
-        # Validación de alias único
         if usuarios_col.find_one({"alias": alias}):
             flash("Alias ya registrado")
             return redirect(url_for("registro"))
@@ -142,7 +150,6 @@ def registro():
         })
         flash("Registro exitoso, inicia sesión")
         return redirect(url_for("login"))
-
     return render_template("registro.html")
 
 @app.route("/terminos")
@@ -153,26 +160,23 @@ def terminos():
 def privacidad():
     return render_template("privacidad.html")
 
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         alias = request.form["alias"].strip()
         password = request.form["password"]
-        recordarme = request.form.get("recordarme")  # checkbox
+        recordarme = request.form.get("recordarme")
 
         user = usuarios_col.find_one({"alias": alias})
         if not user or not check_password_hash(user["password"], password):
             flash("Credenciales inválidas")
             return redirect(url_for("login"))
 
-        session.permanent = bool(recordarme)  # sesión de 30 días si marcó
+        session.permanent = bool(recordarme)
         session["alias"] = alias
-
         flash("Sesión iniciada")
         return redirect(url_for("inicio"))
     return render_template("login.html")
-
 
 @app.route("/salir")
 def salir():
@@ -180,6 +184,369 @@ def salir():
     flash("Sesión cerrada")
     return redirect(url_for("index"))
 
+# ---------------------------------------------------------------------------
+# Juego 1 – Foto Hot
+# ---------------------------------------------------------------------------
+
+@app.route("/foto_hot", methods=["GET", "POST"])
+def foto_hot():
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias:
+        flash("Inicia sesión para jugar.")
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        rival = request.form.get("rival")
+        file = request.files.get("imagen")
+
+        if not file or not allowed_file(file.filename, ALLOWED_IMAGE):
+            flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
+            return redirect(url_for("foto_hot"))
+
+        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
+        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+        ruta_img = str(file_id)
+
+        duelo = fotos_col.find_one({
+            "$or": [
+                {"player": alias, "rival": rival, "estado": "pendiente"},
+                {"player": rival, "rival": alias, "estado": "pendiente"}
+            ]
+        })
+
+        if duelo:
+            update = {}
+            if duelo["player"] == alias and not duelo.get("player_image"):
+                update = {"player_image": ruta_img, "player_tokens": 0, "player_votes": 0}
+            elif duelo["rival"] == alias and not duelo.get("rival_image"):
+                update = {"rival_image": ruta_img, "rival_tokens": 0, "rival_votes": 0}
+            else:
+                flash("Ya subiste una foto para este duelo.")
+                return redirect(url_for("foto_hot"))
+
+            fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
+            flash("Foto subida al duelo 🔥")
+        else:
+            fotos_col.insert_one({
+                "player": alias,
+                "player_image": ruta_img,
+                "player_tokens": 0,
+                "player_votes": 0,
+                "rival": rival or None,
+                "rival_image": None,
+                "rival_tokens": 0,
+                "rival_votes": 0,
+                "comentarios": [],
+                "fecha": datetime.now(),
+                "estado": "pendiente",
+                "votantes": []
+            })
+            flash("Foto subida al duelo 🔥")
+
+        return redirect(url_for("foto_hot"))
+
+    duelos = list(fotos_col.find({"estado": "pendiente"}))
+    return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
+
+
+@app.route("/votar_duelo", methods=["POST"])
+def votar_duelo():
+    alias, tokens_oro, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    lado = data.get("lado")
+    if lado not in ["player", "rival"]:
+        return jsonify(success=False, message="Lado inválido"), 400
+
+    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    if not duelo:
+        return jsonify(success=False, message="Duelo no encontrado"), 404
+
+    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
+        return jsonify(success=False, message="Ya votaste"), 403
+
+    if tokens_oro < 1:
+        return jsonify(success=False, message="Tokens oro insuficientes"), 403
+
+    usuarios_col.update_one(
+        {"alias": alias, "tokens_oro": {"$gte": 1}},
+        {"$inc": {"tokens_oro": -1}}
+    )
+
+    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
+    usuarios_col.update_one(
+        {"alias": ganador_alias},
+        {"$inc": {"tokens_oro": 1}}
+    )
+
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {
+            "$inc": {f"{lado}_votes": 1},
+            "$push": {"votantes": {"usuario": alias, "lado": lado, "fecha": datetime.now()}}
+        }
+    )
+    return jsonify(success=True, message="Voto registrado y token transferido")
+
+@app.route("/comentario_duelo", methods=["POST"])
+def comentario_duelo():
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    texto = data.get("texto", "").strip()
+    if not duelo_id or not texto:
+        return jsonify(success=False, message="Comentario inválido"), 400
+
+    comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
+    fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
+    return jsonify(success=True)
+
+@app.route("/aceptar_reto", methods=["POST"])
+def aceptar_reto():
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Inicia sesión"), 401
+
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    imagen_data = data.get("imagen")
+    if not duelo_id or not imagen_data:
+        return jsonify(success=False, message="Faltan datos"), 400
+
+    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    if not duelo or duelo.get("rival"):
+        return jsonify(success=False, message="Reto no disponible"), 403
+
+    header, b64 = imagen_data.split(",", 1)
+    ext = header.split(";")[0].split("/")[1]
+
+    # ¡CORRECCIÓN! Subimos a GridFS en lugar de guardar en disco
+    file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}_rival.{ext}", content_type=f"image/{ext}")
+    ruta_img = str(file_id)
+
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {"$set": {"rival": alias, "rival_image": ruta_img, "rival_votes": 0, "rival_tokens": 0}}
+    )
+    return jsonify(success=True)
+
+@app.route("/eliminar_foto_hot/<reto_id>", methods=["POST"])
+def eliminar_foto_hot(reto_id):
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        flash("Inicia sesión para eliminar el reto.")
+        return redirect(url_for("index"))
+
+    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
+    if not duelo:
+        flash("Reto no encontrado.")
+        return redirect(url_for("foto_hot"))
+
+    if duelo["player"] != alias:
+        flash("No tienes permiso para eliminar este reto.")
+        return redirect(url_for("foto_hot"))
+
+    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
+    if "player_image" in duelo:
+        try:
+            fs.delete(ObjectId(duelo["player_image"]))
+        except Exception as e:
+            print(f"Error al eliminar de GridFS: {e}")
+
+    fotos_col.delete_one({"_id": duelo["_id"]})
+    flash("Reto eliminado y tokens devueltos.")
+    return redirect(url_for("foto_hot"))
+
+# ---------------------------------------------------------------------------
+# Juego 2 – Susurra y Gana (audios sensuales)
+# --------------------------------------------------------------------------
+
+@app.route("/audio_hot", methods=["GET", "POST"])
+def audio_hot():
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias or alias == "Invitado":
+        flash("Inicia sesión para participar.")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        file = request.files.get("audio")
+        descripcion = request.form.get("descripcion", "").strip()
+
+        if not file or file.filename == "":
+            flash("No seleccionaste ningún archivo.")
+            return redirect(url_for("audio_hot"))
+
+        if not allowed_file(file.filename, ALLOWED_AUDIO):
+            flash("Sube un audio válido (mp3, wav, ogg, m4a)")
+            return redirect(url_for("audio_hot"))
+
+        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
+        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+        
+        audios_col.insert_one({
+            "user": alias,
+            "audio": str(file_id), # Guardamos el ID del archivo
+            "descripcion": descripcion,
+            "votos": 0,
+            "reacciones": [],
+            "fecha": datetime.now()
+        })
+
+        flash("Audio subido con éxito 🔥")
+        return redirect(url_for("audio_hot"))
+
+    # GET: Mostrar audios y datos
+    pistas = list(audios_col.find().sort("fecha", -1))
+    for pista in pistas:
+        pista["comentarios"] = list(comentarios_col.find({"audio_id": str(pista["_id"])}))
+
+    tokens_por_usuario = {
+        u.get("alias"): u.get("tokens", 0)
+        for u in usuarios_col.find({}, {"alias": 1, "tokens": 1})
+    }
+
+    historial = list(donaciones_col.find().sort("fecha", -1).limit(10))
+
+    return render_template("audio_hot.html",
+                            alias=alias,
+                            tokens_oro=tokens_oro,
+                            tokens_plata=tokens_plata,
+                            pistas=pistas,
+                            tokens_por_usuario=tokens_por_usuario,
+                            historial=historial)
+
+
+@app.route("/apoyar_audio", methods=["POST"])
+def apoyar_audio():
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    if not alias:
+        flash("Debes iniciar sesión para apoyar con tokens")
+        return redirect(url_for("audio_hot"))
+
+    autor = request.form.get("autor")
+    if not autor or alias == autor:
+        flash("No puedes apoyarte a ti mismo")
+        return redirect(url_for("audio_hot"))
+
+    user = usuarios_col.find_one({"alias": alias})
+    if not user:
+        flash("Usuario no encontrado")
+        return redirect(url_for("audio_hot"))
+
+    if user.get("tokens_oro", 0) >= 1:
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -1}})
+        donaciones_col.insert_one({
+            "de": alias,
+            "para": autor,
+            "fecha": datetime.now(),
+            "tipo": "oro"
+        })
+        flash(f"Apoyaste a {autor} con 1 token de oro ✨")
+    elif user.get("tokens_plata", 0) >= 1:
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
+        donaciones_col.insert_one({
+            "de": alias,
+            "para": autor,
+            "fecha": datetime.now(),
+            "tipo": "plata"
+        })
+        flash(f"Apoyaste a {autor} con 1 token de plata 🤝")
+    else:
+        flash("No tienes tokens suficientes 💸")
+    
+    return redirect(url_for("audio_hot"))
+
+
+@app.route("/votar_audio/<audio_id>", methods=["POST"])
+def votar_audio(audio_id):
+    alias = session.get("alias")
+    if not alias:
+        flash("Inicia sesión para votar")
+        return redirect(url_for("login"))
+
+    audios_col.update_one({"_id": ObjectId(audio_id)}, {"$inc": {"votos": 1}})
+    flash("✅ Voto registrado")
+    return redirect(url_for("audio_hot"))
+
+@app.route("/comentar_audio/<audio_id>", methods=["POST"])
+def comentar_audio(audio_id):
+    alias = session.get("alias")
+    comentario = request.form.get("comentario", "").strip()
+    if alias and comentario:
+        comentarios_col.insert_one({
+            "audio_id": audio_id,
+            "usuario": alias,
+            "comentario": comentario,
+            "fecha": datetime.now()
+        })
+        flash("💬 Comentario agregado")
+    else:
+        flash("❌ Comentario vacío")
+    return redirect(url_for("audio_hot"))
+
+@app.route("/reaccion_audio/<audio_id>/<tipo>", methods=["POST"])
+def reaccion_audio(audio_id, tipo):
+    alias = session.get("alias")
+    if not alias:
+        flash("Inicia sesión para reaccionar")
+        return redirect(url_for("login"))
+
+    existe = reacciones_col.find_one({
+        "audio_id": audio_id,
+        "usuario": alias,
+        "tipo": tipo
+    })
+
+    if existe:
+        flash("Ya reaccionaste con ese tipo a este audio")
+    else:
+        reacciones_col.insert_one({
+            "audio_id": audio_id,
+            "usuario": alias,
+            "tipo": tipo,
+            "fecha": datetime.now()
+        })
+        flash("🔁 Reacción registrada")
+
+    return redirect(url_for("audio_hot"))
+
+@app.route("/audio_eliminar_reto/<audio_id>", methods=["POST"])
+def audio_hot_eliminar_reto(audio_id):
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        flash("Inicia sesión para eliminar el audio")
+        return redirect(url_for("audio_hot"))
+
+    pista = audios_col.find_one({"_id": ObjectId(audio_id)})
+    if not pista:
+        flash("Audio no encontrado")
+        return redirect(url_for("audio_hot"))
+
+    if pista["user"] != alias:
+        flash("Solo puedes eliminar tus propios audios")
+        return redirect(url_for("audio_hot"))
+
+    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
+    if "audio" in pista:
+        try:
+            fs.delete(ObjectId(pista["audio"]))
+        except Exception as e:
+            print(f"Error al eliminar de GridFS: {e}")
+
+    audios_col.delete_one({"_id": ObjectId(audio_id)})
+    flash("Audio eliminado correctamente")
+    return redirect(url_for("audio_hot"))
+
+
+# ---------------------------------------------------------------------------
+# Más rutas (lanzar retos, votar, etc.)
+# ---------------------------------------------------------------------------
 
 @app.route("/jugar")
 def jugar():
@@ -191,24 +558,9 @@ def jugar():
     retos = list(retos_col.find({"estado": "pendiente"}))
     return render_template("jugar.html", saldo=tokens_oro, saldo_plata=tokens_plata, retos=retos)
 
-# ---------------------------------------------------------------------------
-# Lanzar reto con notificaciones
-# ---------------------------------------------------------------------------
-def get_user_and_saldo():
-    alias = session.get("alias")
-    if not alias:
-        return None, 0, 0  # ✅ Devuelve 3 valores si no hay sesión
-
-    user = usuarios_col.find_one({"alias": alias})
-    oro = int(user.get("tokens_oro", 0)) if user else 0
-    plata = int(user.get("tokens_plata", 0)) if user else 0
-    return alias, oro, plata  # ✅ Devuelve alias y saldos
-
-
 @app.route("/lanzar", methods=["GET", "POST"])
 def lanzar():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()  # ✅ Corregido: indentación correcta
-
+    alias, tokens_oro, tokens_plata = get_user_and_saldo()
     if not alias:
         flash("Debes iniciar sesión para lanzar retos")
         return redirect(url_for("index"))
@@ -278,7 +630,6 @@ def lanzar():
                            retos_publicos=retos_publicos,
                            notificaciones=notificaciones,
                            retos_recibidos_pendientes=retos_recibidos_pendientes)
-
 
 @app.route("/eliminar_reto/<reto_id>", methods=["POST"])
 def eliminar_reto(reto_id):
@@ -377,7 +728,7 @@ def aceptar_reto_con_id(reto_id):
 
 @app.route("/reclamar_victoria/<reto_id>", methods=["POST"])
 def reclamar_victoria(reto_id):
-    alias, _ = get_user_and_saldo()
+    alias, _, _ = get_user_and_saldo()
     reto = retos_col.find_one({"_id": ObjectId(reto_id)})
 
     if not reto:
@@ -388,471 +739,12 @@ def reclamar_victoria(reto_id):
         flash("Solo el ganador puede reclamar la victoria", "error")
         return redirect(url_for("lanzar"))
 
-    # Aquí podrías hacer lógica adicional (log, notificación, etc.)
-    # Por ejemplo, guardar que ya reclamó, enviar por WhatsApp, etc.
-
     flash("🎉 ¡Felicidades! Has reclamado tu victoria. ¡Disfruta tus tokens!", "success")
     return redirect(url_for("lanzar"))
-
 # ---------------------------------------------------------------------------
-# Juego 1 – ¿Quién calienta más? (foto vs foto)
-# ---------------------------------------------------------------------------
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from werkzeug.utils import secure_filename
-from bson.objectid import ObjectId
-from datetime import datetime, timedelta
-from uuid import uuid4
-import os
-import base64
-from pymongo import MongoClient
-import certifi
-
-# Suponiendo que estas variables están definidas en tu archivo principal de la app
-# app = Flask(__name__)
-# app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
-# MONGO_URI = os.getenv("MONGO_URI", "...")
-# client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-# db = client.hotquiz
-# usuarios_col = db.users
-# fotos_col = db.fotos
-
-# 📂 Carpeta propia para este módulo
-UPLOAD_FOTO_HOT = os.path.join("static", "uploads_foto_hot")
-os.makedirs(UPLOAD_FOTO_HOT, exist_ok=True)  # Se crea automáticamente
-
-# ✅ Extensiones permitidas
-ALLOWED_IMAGE = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    """Verifica si el archivo tiene una extensión válida."""
-    return filename and '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE
-
-def get_user_and_saldo():
-    alias = session.get("alias")
-    if not alias:
-        return None, 0, 0
-    user = usuarios_col.find_one({"alias": alias})
-    oro = int(user.get("tokens_oro", 0)) if user else 0
-    plata = int(user.get("tokens_plata", 0)) if user else 0
-    return alias, oro, plata
-
-@app.route("/foto_hot", methods=["GET", "POST"])
-def foto_hot():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para jugar.")
-        return redirect(url_for("index"))
-
-    if request.method == "POST":
-        rival = request.form.get("rival")
-        file = request.files.get("imagen")
-
-        if not file or not allowed_file(file.filename):
-            flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
-            return redirect(url_for("foto_hot"))
-
-        filename = f"{uuid4().hex}_{secure_filename(file.filename)}"
-        file_path = os.path.join(UPLOAD_FOTO_HOT, filename)
-        file.save(file_path)
-        ruta_img = f"uploads_foto_hot/{filename}"
-
-        duelo = fotos_col.find_one({
-            "$or": [
-                {"player": alias, "rival": rival, "estado": "pendiente"},
-                {"player": rival, "rival": alias, "estado": "pendiente"}
-            ]
-        })
-
-        if duelo:
-            update = {}
-            if duelo["player"] == alias and not duelo.get("player_image"):
-                update = {"player_image": ruta_img, "player_tokens": 0, "player_votes": 0}
-            elif duelo["rival"] == alias and not duelo.get("rival_image"):
-                update = {"rival_image": ruta_img, "rival_tokens": 0, "rival_votes": 0}
-            else:
-                flash("Ya subiste una foto para este duelo.")
-                return redirect(url_for("foto_hot"))
-
-            fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
-            flash("Foto subida al duelo 🔥")
-        else:
-            fotos_col.insert_one({
-                "player": alias,
-                "player_image": ruta_img,
-                "player_tokens": 0,
-                "player_votes": 0,
-                "rival": rival or None,
-                "rival_image": None,
-                "rival_tokens": 0,
-                "rival_votes": 0,
-                "comentarios": [],
-                "fecha": datetime.now(),
-                "estado": "pendiente",
-                "votantes": []
-            })
-            flash("Foto subida al duelo 🔥")
-
-        return redirect(url_for("foto_hot"))
-
-    duelos = list(fotos_col.find({"estado": "pendiente"}))
-    return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
-
-@app.route("/votar_duelo", methods=["POST"])
-def votar_duelo():
-    alias, tokens_oro, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    lado = data.get("lado")
-    if lado not in ["player", "rival"]:
-        return jsonify(success=False, message="Lado inválido"), 400
-
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
-    if not duelo:
-        return jsonify(success=False, message="Duelo no encontrado"), 404
-
-    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
-        return jsonify(success=False, message="Ya votaste"), 403
-
-    if tokens_oro < 1:
-        return jsonify(success=False, message="Tokens oro insuficientes"), 403
-
-    usuarios_col.update_one(
-        {"alias": alias, "tokens_oro": {"$gte": 1}},
-        {"$inc": {"tokens_oro": -1}}
-    )
-
-    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
-    usuarios_col.update_one(
-        {"alias": ganador_alias},
-        {"$inc": {"tokens_oro": 1}}
-    )
-
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {
-            "$inc": {f"{lado}_votes": 1},
-            "$push": {"votantes": {"usuario": alias, "lado": lado, "fecha": datetime.now()}}
-        }
-    )
-    return jsonify(success=True, message="Voto registrado y token transferido")
-
-@app.route("/comentario_duelo", methods=["POST"])
-def comentario_duelo():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    texto = data.get("texto", "").strip()
-    if not duelo_id or not texto:
-        return jsonify(success=False, message="Comentario inválido"), 400
-
-    comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
-    fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
-    return jsonify(success=True)
-
-@app.route("/aceptar_reto", methods=["POST"])
-def aceptar_reto():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Inicia sesión"), 401
-
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    imagen_data = data.get("imagen")
-    if not duelo_id or not imagen_data:
-        return jsonify(success=False, message="Faltan datos"), 400
-
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
-    if not duelo or duelo.get("rival"):
-        return jsonify(success=False, message="Reto no disponible"), 403
-
-    header, b64 = imagen_data.split(",", 1)
-    ext = header.split(";")[0].split("/")[1]
-    filename = f"{uuid4().hex}_rival.{ext}"
-    os.makedirs(UPLOAD_FOTO_HOT, exist_ok=True)
-    filepath = os.path.join(UPLOAD_FOTO_HOT, filename)
-    with open(filepath, "wb") as f:
-        f.write(base64.b64decode(b64))
-    ruta_img = f"uploads_foto_hot/{filename}"
-
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {"$set": {"rival": alias, "rival_image": ruta_img, "rival_votes": 0, "rival_tokens": 0}}
-    )
-    return jsonify(success=True)
-
-@app.route("/eliminar_foto_hot/<reto_id>", methods=["POST"])
-def eliminar_foto_hot(reto_id):
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para eliminar el reto.")
-        return redirect(url_for("index"))
-
-    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
-    if not duelo:
-        flash("Reto no encontrado.")
-        return redirect(url_for("foto_hot"))
-
-    if duelo["player"] != alias:
-        flash("No tienes permiso para eliminar este reto.")
-        return redirect(url_for("foto_hot"))
-
-    fotos_col.delete_one({"_id": duelo["_id"]})
-    flash("Reto eliminado y tokens devueltos.")
-    return redirect(url_for("foto_hot"))
-# ---------------------------------------------------------------------------
-# Juego 2 – Susurra y Gana (audios sensuales)
-# --------------------------------------------------------------------------
-
-import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-from werkzeug.utils import secure_filename
-from pymongo import MongoClient
-from datetime import datetime
-from uuid import uuid4
-
-# Configuración de subida
-app.config["UPLOAD_FOLDER"] = os.path.join("static", "uploads")
-if not os.path.exists(app.config["UPLOAD_FOLDER"]):
-    os.makedirs(app.config["UPLOAD_FOLDER"])
-
-ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_AUDIO_EXTENSIONS
-
-def get_user_and_saldo():
-    alias = session.get("alias")
-    if not alias:
-        return None, 0, 0
-    user = usuarios_col.find_one({"alias": alias})
-    if user:
-        return alias, int(user.get("tokens_oro", 0)), int(user.get("tokens_plata", 0))
-    return None, 0, 0
-
-@app.route("/audio_hot", methods=["GET", "POST"])
-def audio_hot():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias or alias == "Invitado":
-        flash("Inicia sesión para participar.")
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        file = request.files.get("audio")
-        descripcion = request.form.get("descripcion", "").strip()
-
-        if not file or file.filename == "":
-            flash("No seleccionaste ningún archivo.")
-            return redirect(url_for("audio_hot"))
-
-        filename = secure_filename(file.filename)
-        if '.' not in filename:
-            flash("Archivo sin extensión.")
-            return redirect(url_for("audio_hot"))
-
-        extension = filename.rsplit('.', 1)[1].lower()
-        if extension not in ALLOWED_AUDIO_EXTENSIONS:
-            flash("Sube un audio válido (mp3, wav, ogg, m4a)")
-            return redirect(url_for("audio_hot"))
-
-        # Genera nombre único para el archivo
-        filename = f"{uuid4().hex}_{filename}"
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(filepath)
-
-        audios_col.insert_one({
-            "user": alias,
-            "audio": f"uploads/{filename}",
-            "descripcion": descripcion,
-            "votos": 0,
-            "reacciones": [],
-            "fecha": datetime.now()
-        })
-
-        flash("Audio subido con éxito 🔥")
-        return redirect(url_for("audio_hot"))
-
-    # GET: Mostrar audios y datos
-    pistas = list(audios_col.find().sort("fecha", -1))
-    for pista in pistas:
-        pista["comentarios"] = list(comentarios_col.find({"audio_id": str(pista["_id"])}))
-
-    tokens_por_usuario = {
-        u.get("alias"): u.get("tokens", 0)
-        for u in usuarios_col.find({}, {"alias": 1, "tokens": 1})
-    }
-
-    historial = list(donaciones_col.find().sort("fecha", -1).limit(10))
-
-    return render_template("audio_hot.html",
-                           alias=alias,
-                           tokens_oro=tokens_oro,
-                           tokens_plata=tokens_plata,
-                           pistas=pistas,
-                           tokens_por_usuario=tokens_por_usuario,
-                           historial=historial)
-
-@app.route("/apoyar_audio", methods=["POST"])
-def apoyar_audio():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para apoyar con tokens")
-        return redirect(url_for("audio_hot"))
-
-    autor = request.form.get("autor")
-    if not autor or alias == autor:
-        flash("No puedes apoyarte a ti mismo")
-        return redirect(url_for("audio_hot"))
-
-    user = usuarios_col.find_one({"alias": alias})
-    if not user:
-        flash("Usuario no encontrado")
-        return redirect(url_for("audio_hot"))
-
-    if user.get("tokens_oro", 0) >= 1:
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -1}})
-        donaciones_col.insert_one({
-            "de": alias,
-            "para": autor,
-            "fecha": datetime.now(),
-            "tipo": "oro"
-        })
-        flash(f"Apoyaste a {autor} con 1 token de oro ✨")
-    elif user.get("tokens_plata", 0) >= 1:
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
-        donaciones_col.insert_one({
-            "de": alias,
-            "para": autor,
-            "fecha": datetime.now(),
-            "tipo": "plata"
-        })
-        flash(f"Apoyaste a {autor} con 1 token de plata 🤝")
-    else:
-        flash("No tienes tokens suficientes 💸")
-    
-    return redirect(url_for("audio_hot"))
-
-
-@app.route("/votar_audio/<audio_id>", methods=["POST"])
-def votar_audio(audio_id):
-    alias = session.get("alias")
-    if not alias:
-        flash("Inicia sesión para votar")
-        return redirect(url_for("login"))
-
-    audios_col.update_one({"_id": ObjectId(audio_id)}, {"$inc": {"votos": 1}})
-    flash("✅ Voto registrado")
-    return redirect(url_for("audio_hot"))
-
-@app.route("/comentar_audio/<audio_id>", methods=["POST"])
-def comentar_audio(audio_id):
-    alias = session.get("alias")
-    comentario = request.form.get("comentario", "").strip()
-    if alias and comentario:
-        comentarios_col.insert_one({
-            "audio_id": audio_id,
-            "usuario": alias,
-            "comentario": comentario,
-            "fecha": datetime.now()
-        })
-        flash("💬 Comentario agregado")
-    else:
-        flash("❌ Comentario vacío")
-    return redirect(url_for("audio_hot"))
-
-@app.route("/reaccion_audio/<audio_id>/<tipo>", methods=["POST"])
-def reaccion_audio(audio_id, tipo):
-    alias = session.get("alias")
-    if not alias:
-        flash("Inicia sesión para reaccionar")
-        return redirect(url_for("login"))
-
-    existe = reacciones_col.find_one({
-        "audio_id": audio_id,
-        "usuario": alias,
-        "tipo": tipo
-    })
-
-    if existe:
-        flash("Ya reaccionaste con ese tipo a este audio")
-    else:
-        reacciones_col.insert_one({
-            "audio_id": audio_id,
-            "usuario": alias,
-            "tipo": tipo,
-            "fecha": datetime.now()
-        })
-        flash("🔁 Reacción registrada")
-
-    return redirect(url_for("audio_hot"))
-
-# --------------------------- RUTA EXTRA ------------------------------
-@app.route("/audio_eliminar_reto/<audio_id>", methods=["POST"])
-def audio_hot_eliminar_reto(audio_id):
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para eliminar el audio")
-        return redirect(url_for("audio_hot"))
-
-    pista = audios_col.find_one({"_id": ObjectId(audio_id)})
-    if not pista:
-        flash("Audio no encontrado")
-        return redirect(url_for("audio_hot"))
-
-    if pista["user"] != alias:
-        flash("Solo puedes eliminar tus propios audios")
-        return redirect(url_for("audio_hot"))
-
-    # Eliminar el archivo si existe
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], pista["audio"].split("/")[-1])
-    if os.path.exists(filepath):
-        os.remove(filepath)
-
-    # Eliminar de la base de datos
-    audios_col.delete_one({"_id": ObjectId(audio_id)})
-    flash("Audio eliminado correctamente")
-    return redirect(url_for("audio_hot"))
-# ---------------------------------------------------------------------------
-# Juego 3 – Hot Roulette (Verdad o Reto)
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
-from werkzeug.utils import secure_filename
-from bson import ObjectId
-from datetime import datetime
-from random import choice
-import base64, os, uuid
-from pymongo import MongoClient
-import certifi
-
-# Suponiendo que estas variables están definidas en tu archivo principal de la app
-# app = Flask(__name__)
-# app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
-# MONGO_URI = os.getenv("MONGO_URI", "...")
-# client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-# db = client.hotquiz
-# usuarios_col = db.users
-# publicaciones_col = db.publicaciones_roulette
-
-# 📂 Carpeta exclusiva para guardar imágenes de retos cumplidos
-UPLOAD_HOT_ROULETTE = os.path.join("static", "uploads_hot_roulette")
-os.makedirs(UPLOAD_HOT_ROULETTE, exist_ok=True)  # Se crea automáticamente
-
-ALLOWED_IMAGE = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    """Valida que el archivo tenga extensión permitida."""
-    return filename and '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE
-
-def get_user_alias():
-    return session.get("alias")
-
 @app.route("/hot_roulette")
 def hot_roulette():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         flash("Debes iniciar sesión para jugar")
         return redirect(url_for("login"))
@@ -885,7 +777,7 @@ def hot_roulette():
 
 @app.route("/hot_roulette/girar", methods=["POST"])
 def hot_roulette_girar():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify({"error": "Debes iniciar sesión"}), 401
     
@@ -911,7 +803,7 @@ def hot_roulette_girar():
 
 @app.route("/hot_roulette/publicar_reto", methods=["POST"])
 def publicar_reto():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify(success=False, message="Debes iniciar sesión"), 401
     data = request.get_json()
@@ -929,7 +821,7 @@ def publicar_reto():
 
 @app.route("/hot_roulette/reaccion", methods=["POST"])
 def reaccion_roulette():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify(success=False, message="Debes iniciar sesión"), 401
     data = request.get_json()
@@ -947,7 +839,7 @@ def reaccion_roulette():
 # 💡 CORRECCIÓN: Ruta renombrada a aceptar_reto_roulette para evitar conflicto
 @app.route("/hot_roulette/aceptar_reto_roulette", methods=["POST"])
 def aceptar_reto_roulette():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify(success=False, message="Debes iniciar sesión"), 401
     data = request.get_json()
@@ -959,7 +851,7 @@ def aceptar_reto_roulette():
 
 @app.route("/hot_roulette/cumplir_reto", methods=["POST"])
 def cumplir_reto():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     data = request.get_json()
     imagen_data = data.get("imagen")
     reto_id = data.get("retoId")
@@ -972,11 +864,11 @@ def cumplir_reto():
         ext = header.split("/")[1].split(";")[0]
         if ext.lower() not in ALLOWED_IMAGE:
             return jsonify(success=False, message="Formato de imagen no permitido"), 400
-        filename = f"{uuid.uuid4().hex}.{ext}"
-        filepath = os.path.join(UPLOAD_HOT_ROULETTE, filename)
-        with open(filepath, "wb") as f:
-            f.write(base64.b64decode(b64))
-        ruta_relativa = f"uploads_hot_roulette/{filename}"
+        
+        # ¡CORRECCIÓN! Usamos GridFS para guardar la imagen
+        file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}.{ext}", content_type=f"image/{ext}")
+        ruta_relativa = str(file_id)
+
         publicaciones_col.update_one(
             {"_id": ObjectId(reto_id)},
             {"$set": {
@@ -991,7 +883,7 @@ def cumplir_reto():
 
 @app.route("/hot_roulette/eliminar_cumplido", methods=["POST"])
 def eliminar_cumplido():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify(success=False, message="Debes iniciar sesión"), 401
     data = request.get_json()
@@ -1003,12 +895,20 @@ def eliminar_cumplido():
         return jsonify(success=False, message="Reto no encontrado"), 404
     if publicacion.get("cumplido_por") != alias:
         return jsonify(success=False, message="No tienes permiso para eliminar este reto"), 403
+
+    # ¡CORRECCIÓN! Eliminamos de GridFS
     if "imagen_cumplimiento" in publicacion:
-        ruta_imagen = os.path.join("static", publicacion["imagen_cumplimiento"])
-        if os.path.exists(ruta_imagen):
-            os.remove(ruta_imagen)
+        try:
+            fs.delete(ObjectId(publicacion["imagen_cumplimiento"]))
+        except Exception as e:
+            print(f"Error al eliminar de GridFS: {e}")
+
     publicaciones_col.delete_one({"_id": ObjectId(reto_id)})
     return jsonify(success=True, message="Reto cumplido eliminado exitosamente")
+
+# ---------------------------------------------------------------------------
+# Más rutas (lanzar retos, votar, etc.)
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
@@ -1016,43 +916,9 @@ def eliminar_cumplido():
 # Funciones de utilidad
 # 📸 Página principal de HotCopy
 # Funciones de utilidad
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
-from werkzeug.utils import secure_filename
-from bson import ObjectId
-from datetime import datetime
-from uuid import uuid4
-import os
-import mimetypes
-
-# Suponiendo que estas variables están definidas en tu archivo principal de la app
-# app = Flask(__name__)
-# app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
-# # MONGO_URI = os.getenv("MONGO_URI", "...")
-# # client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-# # db = client.hotquiz
-# # usuarios_col = db.users
-# # hotcopy_col = db.hotcopy
-
-# 📂 Carpeta exclusiva para este juego
-UPLOAD_HOTCOPY = os.path.join("static", "uploads_hotcopy")
-os.makedirs(UPLOAD_HOTCOPY, exist_ok=True)
-
-# ✅ Extensiones permitidas
-ALLOWED_IMAGE = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    """Verifica si el archivo es una imagen permitida"""
-    return filename and '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE
-
-def get_user_and_saldo():
-    """Obtiene alias y saldo de tokens"""
-    alias = session.get("alias")
-    if not alias:
-        return None, 0, 0
-    user = usuarios_col.find_one({"alias": alias})
-    if user:
-        return alias, user.get("tokens_oro", 0), user.get("tokens_plata", 0)
-    return None, 0, 0
+# ---------------------------------------------------------------------------
+# Juego 4 – HotCopy
+# --------------------------------------------------------------------------
 
 def asegurar_reacciones(fotos):
     """Asegura que cada foto tenga reacciones inicializadas"""
@@ -1060,7 +926,7 @@ def asegurar_reacciones(fotos):
         if "reacciones" not in foto or not isinstance(foto["reacciones"], dict):
             foto["reacciones"] = {"🔥": 0, "😍": 0, "😂": 0, "😮": 0}
     return fotos
-    
+
 @app.route("/hotcopy", methods=["GET", "POST"])
 def hotcopy():
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
@@ -1072,20 +938,17 @@ def hotcopy():
         original_id = request.form.get("original_id") or None
         file = request.files.get("imagen")
         
-        if not file or file.filename == "" or not allowed_file(file.filename):
+        if not file or file.filename == "" or not allowed_file(file.filename, ALLOWED_IMAGE):
             flash("Sube una imagen válida (png, jpg, jpeg, gif).")
             return redirect(url_for("hotcopy"))
         
-        # 💡 Corrección: Se utiliza la carpeta correcta para subir
-        filename = f"{uuid4().hex}_{secure_filename(file.filename)}"
-        file_path = os.path.join(UPLOAD_HOTCOPY, filename)
-        file.save(file_path)
+        # 💡 Corrección: Usamos GridFS para guardar el archivo
+        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
 
-        # 💡 Corrección: Se guarda la ruta relativa correcta en la DB
         hotcopy_col.insert_one({
             "user": alias,
             "original_id": ObjectId(original_id) if original_id else None,
-            "image": f"uploads_hotcopy/{filename}",
+            "image": str(file_id), # Guardamos el ID del archivo
             "votos": 0,
             "reacciones": {"🔥": 0, "😍": 0, "😂": 0, "😮": 0},
             "fecha": datetime.now(),
@@ -1094,7 +957,6 @@ def hotcopy():
         flash("✅ Tu foto ha sido subida exitosamente.")
         return redirect(url_for("hotcopy"))
 
-    # 💡 Mejorado: Se agrupan las fotos para el renderizado del HTML
     originals_cursor = hotcopy_col.find({"original_id": None}).sort("fecha", -1)
     originals = []
     for original in originals_cursor:
@@ -1117,10 +979,7 @@ def votar(foto_id):
     if tokens_oro < 1:
         return jsonify(success=False, message="No tienes tokens de oro suficientes para votar.")
     
-    # Descontar 1 token de oro
     usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -1}})
-    
-    # Incrementar votos en la foto
     hotcopy_col.update_one({"_id": ObjectId(foto_id)}, {"$inc": {"votos": 1}})
     
     return jsonify(success=True, message="✅ Voto registrado correctamente y se descontó 1 token oro.")
@@ -1152,7 +1011,7 @@ def comentar_hotcopy():
 
 @app.route("/hotcopy/eliminar/<foto_id>", methods=["POST"])
 def eliminar_hotcopy(foto_id):
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         flash("Debes iniciar sesión para eliminar fotos.")
         return redirect(url_for("hotcopy"))
@@ -1166,20 +1025,24 @@ def eliminar_hotcopy(foto_id):
         flash("No puedes eliminar fotos que no son tuyas.")
         return redirect(url_for("hotcopy"))
     
-    # Eliminar archivo físico
+    # 💡 Corrección: Eliminamos de GridFS
     try:
-        # 💡 Corrección: Se utiliza la carpeta correcta para eliminar
-        filepath = os.path.join(UPLOAD_HOTCOPY, os.path.basename(foto["image"]))
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        if "image" in foto:
+            fs.delete(ObjectId(foto["image"]))
     except Exception as e:
-        print(f"Error al eliminar archivo: {e}")
+        print(f"Error al eliminar de GridFS: {e}")
     
     # Eliminar de la base de datos
     hotcopy_col.delete_one({"_id": ObjectId(foto_id)})
     
     # Si la foto eliminada era una original, también se eliminan sus imitaciones
     if "original_id" not in foto:
+        imitations_to_delete = hotcopy_col.find({"original_id": ObjectId(foto_id)})
+        for imitation in imitations_to_delete:
+            try:
+                fs.delete(ObjectId(imitation["image"]))
+            except Exception as e:
+                print(f"Error al eliminar la imitación de GridFS: {e}")
         hotcopy_col.delete_many({"original_id": ObjectId(foto_id)})
     
     flash("Foto eliminada correctamente.")
@@ -1189,13 +1052,18 @@ def eliminar_hotcopy(foto_id):
 # – ¿Quién lo dijo adiviona ?
 # ---------------------------------------------------------------------------
 # Ruta para agregar comentario
-from flask import request, jsonify
+from flask import request, jsonify, flash, redirect, url_for, render_template, session
 from datetime import datetime
 from bson import ObjectId
 
+# --- Suponiendo que estas variables están definidas en tu app principal ---
+# app = Flask(__name__)
+# adivina_col = db.adivina
+# get_user_and_saldo = ...
+
 @app.route("/adivina", methods=["GET"])
 def adivina():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         flash("Inicia sesión")
         return redirect(url_for("index"))
@@ -1205,7 +1073,7 @@ def adivina():
 
 @app.route("/adivina/agregar", methods=["POST"])
 def adivina_agregar():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify({"success": False, "message": "Debes iniciar sesión"}), 401
 
@@ -1219,8 +1087,9 @@ def adivina_agregar():
         "user": alias,
         "texto": texto,
         "fecha": datetime.now(),
-        "comentarios": [],  # ✅ Se inicializa lista vacía
-        "reacciones": {"👍": 0, "❤️": 0, "😂": 0}  # ✅ Se inicializan reacciones
+        "comentarios": [],
+        # ✅ Reacciones inicializadas con emojis, consistente con la ruta de reaccionar
+        "reacciones": {"👍": 0, "❤️": 0, "😂": 0, "😮": 0, "👎": 0} 
     })
 
     return jsonify({"success": True, "message": "Confesión añadida al juego 🕵️"})
@@ -1228,7 +1097,7 @@ def adivina_agregar():
 
 @app.route("/adivina/comentar", methods=["POST"])
 def adivina_comentar():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify({"success": False, "message": "Debes iniciar sesión"}), 401
     
@@ -1258,16 +1127,17 @@ def adivina_comentar():
 # Reaccionar
 @app.route("/adivina/reaccionar", methods=["POST"])
 def adivina_reaccionar():
-    alias = get_user_alias()
+    alias, _, _ = get_user_and_saldo()
     if not alias:
         return jsonify({"success": False, "message": "Debes iniciar sesión"}), 401
     
     data = request.get_json()
     conf_id = data.get("confesionId")
-    tipo = data.get("tipo")  # like, love, laugh, shock, dislike
+    tipo = data.get("tipo")
 
-    if not conf_id or tipo not in ["like", "love", "laugh", "shock", "dislike"]:
-        return jsonify({"success": False, "message": "Datos inválidos"}), 400
+    # ✅ Validación con los mismos emojis inicializados
+    if not conf_id or tipo not in ["👍", "❤️", "😂", "😮", "👎"]:
+        return jsonify({"success": False, "message": "Datos de reacción inválidos"}), 400
 
     # Incrementar contador atómico
     res = adivina_col.update_one(
@@ -1280,7 +1150,6 @@ def adivina_reaccionar():
     else:
         return jsonify({"success": False, "message": "Error al reaccionar"})
 
-
 # Rutas de confesiones
 # Rutas de confesiones
 from flask import Flask, request, session, redirect, url_for, render_template, jsonify
@@ -1291,30 +1160,27 @@ from bson.objectid import ObjectId
 import os
 import random
 from pymongo import MongoClient
+# Es necesario importar GridFSBucket
+from gridfs import GridFSBucket
 
-# Carpeta de subida de confesiones (si no existe, la crea)
-app.config["UPLOAD_FOLDER_CONF"] = "static/confesiones_media"
-os.makedirs(app.config["UPLOAD_FOLDER_CONF"], exist_ok=True)
+# --- Suponiendo que estas variables están definidas en tu app principal ---
+# app = Flask(__name__)
+# client = MongoClient(...)
+# db = client.hotquiz
+# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
+# confesiones_col = db.confesiones
+# get_user = ...
 
-# Extensiones permitidas
+# Extensiones permitidas (ahora usadas para validación)
 ALLOWED_IMG = {"png", "jpg", "jpeg", "gif"}
 ALLOWED_AUDIO = {"mp3", "wav", "ogg"}
-ALLOWED = ALLOWED_IMG.union(ALLOWED_AUDIO)
+ALLOWED_MEDIA = ALLOWED_IMG.union(ALLOWED_AUDIO)
 
 def get_user():
     return session.get("alias", "Anónimo")
 
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED
-
-def guardar_archivo_conf(file):
-    if file and allowed_file(file.filename):
-        extension = file.filename.rsplit(".", 1)[1].lower()
-        nuevo_nombre = f"{uuid4().hex}.{extension}"
-        ruta = os.path.join(app.config["UPLOAD_FOLDER_CONF"], nuevo_nombre)
-        file.save(ruta)
-        return f"confesiones_media/{nuevo_nombre}"
-    return None
+def allowed_file(filename, allowed_extensions):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
 
 @app.route("/confesiones", methods=["GET", "POST"])
 def confesiones():
@@ -1326,14 +1192,16 @@ def confesiones():
         color = request.form.get("color", "#111")
         file = request.files.get("media")
         imagen, audio = None, None
-        if file:
-            ruta = guardar_archivo_conf(file)
-            if ruta:
-                ext = ruta.rsplit(".", 1)[1].lower()
-                if ext in ALLOWED_AUDIO:
-                    audio = ruta
-                elif ext in ALLOWED_IMG:
-                    imagen = ruta
+
+        if file and allowed_file(file.filename, ALLOWED_MEDIA):
+            # 💡 Corrección: Usamos GridFS para guardar el archivo
+            file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+            ext = file.filename.rsplit(".", 1)[1].lower()
+            if ext in ALLOWED_AUDIO:
+                audio = str(file_id)
+            elif ext in ALLOWED_IMG:
+                imagen = str(file_id)
+
         conf = {
             "usuario": alias,
             "texto": texto,
@@ -1383,6 +1251,15 @@ def eliminar_conf(id):
     alias = get_user()
     conf = confesiones_col.find_one({"_id": ObjectId(id)})
     if conf and conf.get("usuario") == alias:
+        # 💡 Corrección: Eliminamos de GridFS si existe imagen o audio
+        try:
+            if conf.get("imagen"):
+                fs.delete(ObjectId(conf["imagen"]))
+            if conf.get("audio"):
+                fs.delete(ObjectId(conf["audio"]))
+        except Exception as e:
+            print(f"Error al eliminar archivo de GridFS: {e}")
+        
         confesiones_col.delete_one({"_id": ObjectId(id)})
         return jsonify(success=True)
     return jsonify(success=False, message="No tienes permiso para eliminar esta confesión.")
@@ -1413,16 +1290,17 @@ def confesiones_scroll():
         c["_id"] = str(c["_id"])
     html_cards = "".join(render_template("confesiones_card.html", conf=c, alias=get_user()) for c in confesiones)
     return jsonify({"html": html_cards, "count": len(confesiones)})
-
 # ---------------------------------------------------------------------------
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
 from werkzeug.utils import secure_filename
 from bson.objectid import ObjectId
 from uuid import uuid4
 from datetime import datetime
 from pymongo import MongoClient
+from gridfs import GridFSBucket, NoFile
 import os
 import certifi
+from io import BytesIO
 
 # Suponiendo que estas variables están definidas en tu archivo principal de la app
 # app = Flask(__name__)
@@ -1430,19 +1308,10 @@ import certifi
 # MONGO_URI = os.getenv("MONGO_URI", "...")
 # client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
 # db = client.hotquiz
+# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
 # hotreels_col = db.hotreels
 # usuarios_col = db.users
 # donaciones_col = db.donaciones
-
-# 💡 Corrección: La carpeta de subida de videos ahora se llama 'hotshorts'
-# 💡 Importante: Define una variable de configuración para la carpeta de videos.
-# No la sobrescribas con la de verificación.
-app.config['VIDEOS_UPLOAD_FOLDER'] = 'static/videos/hotshorts'
-app.config['UPLOAD_FOLDER_VERIFICACION'] = 'static/uploads/verificacion'
-
-# Asegúrate de que ambas carpetas existan
-os.makedirs(app.config['VIDEOS_UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['UPLOAD_FOLDER_VERIFICACION'], exist_ok=True)
 
 
 def get_user_and_saldo():
@@ -1467,26 +1336,16 @@ def hot_shorts():
             return redirect(url_for('hot_shorts'))
 
         if not file:
-            print("⚠ No se recibió archivo en la solicitud")
             flash("No se envió archivo.", "error")
             return redirect(url_for('hot_shorts'))
-
-        print(f"📂 Archivo recibido: {file.filename}")
-
-        filename = secure_filename(file.filename)
-        unique_filename = f"{uuid4().hex}_{filename}"
         
-        # 💡 Corrección: Usa la variable de configuración correcta para los videos
-        filepath = os.path.join(app.config['VIDEOS_UPLOAD_FOLDER'], unique_filename)
+        # 💡 Corrección: Guardamos el archivo directamente en GridFS
+        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
         
-        file.save(filepath)
-        print(f"✅ Guardado en: {filepath}")
-
-        # ... (el resto del código es correcto)
         reel = {
             "usuario": alias,
             "titulo": titulo,
-            "archivo": unique_filename,
+            "archivo_id": str(file_id),  # Guardamos el ID del archivo en GridFS
             "fecha": datetime.utcnow(),
             "likes": 0,
             "fuegos": 0,
@@ -1497,9 +1356,18 @@ def hot_shorts():
         flash("Reel subido con éxito!", "success")
         return redirect(url_for('hot_shorts'))
     
-    # ... (el resto de la función hot_shorts es correcto)
     reels = list(hotreels_col.find().sort("fecha", -1).limit(5))
     return render_template('hot_shorts.html', reels=reels)
+
+@app.route('/hot_shorts/video/<file_id>')
+def stream_video(file_id):
+    try:
+        file = fs.get(ObjectId(file_id))
+        return send_file(BytesIO(file.read()), mimetype=file.content_type)
+    except NoFile:
+        return "Archivo no encontrado", 404
+    except Exception as e:
+        return f"Error al servir el archivo: {e}", 500
 
 @app.route('/hot_shorts/load_more', methods=['GET'])
 def load_more_reels():
@@ -1532,7 +1400,7 @@ def regalar_reel(reel_id):
 
     autor = reel.get("usuario")
     if not autor:
-         return jsonify(success=False, message="Autor del reel no encontrado"), 404
+        return jsonify(success=False, message="Autor del reel no encontrado"), 404
 
     if alias == autor:
         return jsonify(success=False, message="No puedes regalarte a ti mismo"), 403
@@ -1589,12 +1457,17 @@ from flask import render_template, redirect, url_for, session, flash, request
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from uuid import uuid4
+from bson.objectid import ObjectId
 import os
+# Se requiere importar GridFSBucket
+from gridfs import GridFSBucket
 
-# Define la carpeta donde se guardarán los comprobantes
-UPLOAD_FOLDER_COMPROBANTES = 'static/comprobantes'
-os.makedirs(UPLOAD_FOLDER_COMPROBANTES, exist_ok=True)
-app.config['UPLOAD_FOLDER_COMPROBANTES'] = UPLOAD_FOLDER_COMPROBANTES
+
+# Suponiendo que estas variables están definidas en tu archivo principal de la app
+# app = Flask(__name__)
+# usuarios_col = db.users
+# compras_col = db.compras
+# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
 
 # Comprar tokens (vista básica)
 # ---------------------------------------------------------------------------
@@ -1628,17 +1501,15 @@ def comprar_tokens():
             flash("Todos los campos son obligatorios.")
             return redirect(url_for('tokens'))
 
-        # Guardar el archivo de comprobante de forma segura
-        filename = secure_filename(f"{uuid4().hex}_{comprobante_file.filename}")
-        filepath = os.path.join(app.config['UPLOAD_FOLDER_COMPROBANTES'], filename)
-        comprobante_file.save(filepath)
-
+        # 💡 Corrección: Guardar el archivo directamente en GridFS
+        file_id = fs.put(comprobante_file, filename=secure_filename(comprobante_file.filename), content_type=comprobante_file.content_type)
+        
         # Guardar la solicitud en la base de datos
         compra = {
             'alias': alias,
             'correo': correo,
-            'numero_whatsapp': numero_whatsapp,  # Se guarda el número de WhatsApp
-            'comprobante': filename,
+            'numero_whatsapp': numero_whatsapp,
+            'comprobante_id': str(file_id), # 💡 Corrección: Guardamos el ID del archivo de GridFS
             'cantidad': cantidad,
             'estado': 'pendiente',
             'timestamp': datetime.now()
@@ -1649,44 +1520,46 @@ def comprar_tokens():
         return redirect(url_for('tokens'))
 
     return redirect(url_for('tokens'))
-# luego puedes validar manualmente perfiles perfilesp
 import os
 import time
 import hashlib
 import uuid
 import re
-from flask import Flask, render_template, session, redirect, url_for, flash, request
+from flask import Flask, render_template, session, redirect, url_for, flash, request, send_file, abort
 from werkzeug.utils import secure_filename
 from pymongo import MongoClient
 from collections import Counter
 from bson.objectid import ObjectId
 import pusher
 from dotenv import load_dotenv
+from gridfs import GridFSBucket, NoFile
+from io import BytesIO
 
-UPLOAD_FOLDER_AVATAR = 'static/avatars'
-UPLOAD_FOLDER_CHAT = os.path.join('static', 'uploads', 'chat')
-os.makedirs(UPLOAD_FOLDER_AVATAR, exist_ok=True)
-os.makedirs(UPLOAD_FOLDER_CHAT, exist_ok=True)
+
+# Suponiendo que estas variables están definidas en tu app principal
+# app = Flask(__name__)
+# usuarios_col = db.usuarios
+# confesiones_col = db.confesiones
+# mensajes_col = db.mensajes
+# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
 
 ALLOWED_AVATAR = {'png', 'jpg', 'jpeg', 'gif'}
 ALLOWED_CHAT = {'png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'ogg', 'm4a'}
 
-def allowed_file_avatar(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_AVATAR
-
-def allowed_file_chat(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_CHAT
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 def get_gravatar_hash(alias):
     """Calcula el hash MD5 para Gravatar."""
     return hashlib.md5(alias.lower().encode('utf-8')).hexdigest()
 
+# 💡 Corrección: Filtro para avatares actualizado para usar la nueva ruta de GridFS
 @app.template_filter('avatar_url')
 def avatar_url_filter(user_alias):
     """Genera la URL del avatar, usando un avatar personalizado si existe."""
     user = usuarios_col.find_one({'alias': user_alias})
-    if user and 'avatar' in user and user['avatar'] != 'default.png':
-        return url_for('static', filename='avatars/' + user['avatar'])
+    if user and 'avatar' in user and user['avatar'] != 'default':
+        return url_for('stream_avatar', file_id=user['avatar'])
     else:
         gravatar_hash = get_gravatar_hash(user_alias)
         return f"https://www.gravatar.com/avatar/{gravatar_hash}?d=identicon&s=64"
@@ -1702,6 +1575,16 @@ def sanitize_for_pusher(name):
 
 # --- Rutas de la aplicación ---
 
+# 💡 Corrección: Ruta para servir avatares desde GridFS
+@app.route('/avatar/<file_id>')
+def stream_avatar(file_id):
+    try:
+        file = fs.get(ObjectId(file_id))
+        return send_file(BytesIO(file.read()), mimetype=file.content_type, as_attachment=False)
+    except NoFile:
+        return abort(404)
+
+# 💡 Corrección: Ruta para subir y cambiar avatares con GridFS
 @app.route('/cambiar_avatar', methods=['POST'])
 def cambiar_avatar():
     if 'alias' not in session:
@@ -1713,12 +1596,11 @@ def cambiar_avatar():
         flash("No se seleccionó ningún archivo")
         return redirect(url_for('perfiles'))
 
-    if allowed_file_avatar(archivo.filename):
-        filename = secure_filename(f"{uuid.uuid4().hex}_{archivo.filename}")
-        ruta = os.path.join(UPLOAD_FOLDER_AVATAR, filename)
-        archivo.save(ruta)
-
-        usuarios_col.update_one({'alias': session['alias']}, {'$set': {'avatar': filename}})
+    if allowed_file(archivo.filename, ALLOWED_AVATAR):
+        # Subir el archivo a GridFS
+        file_id = fs.put(archivo, filename=secure_filename(f"{uuid.uuid4().hex}_{archivo.filename}"), content_type=archivo.content_type)
+        # Guardar el ID del archivo en el perfil del usuario
+        usuarios_col.update_one({'alias': session['alias']}, {'$set': {'avatar': str(file_id)}})
         flash("Avatar actualizado correctamente")
     else:
         flash("Formato de imagen no permitido. Usa .png, .jpg o .jpeg")
@@ -1776,15 +1658,12 @@ def chat(target):
         return redirect(url_for('login'))
     me = session['alias']
     
-    # Sanear los nombres para el canal de Pusher
     sala = "_".join(sorted([sanitize_for_pusher(me), sanitize_for_pusher(target)]))
 
     mensajes = list(mensajes_col.find({'sala': sala}).sort('timestamp', 1))
 
-    # Pre-calcular el avatar para cada mensaje
     for m in mensajes:
         m['avatar_url'] = avatar_url_filter(m['from'])
-
     me_avatar_url = avatar_url_filter(me)
     target_avatar_url = avatar_url_filter(target)
     
@@ -1797,6 +1676,16 @@ def chat(target):
                            pusher_key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
                            pusher_cluster=os.getenv("PUSHER_CLUSTER", "mt1"))
 
+# 💡 Corrección: Ruta para servir archivos de chat desde GridFS
+@app.route('/chat_media/<file_id>')
+def stream_chat_media(file_id):
+    try:
+        file = fs.get(ObjectId(file_id))
+        return send_file(BytesIO(file.read()), mimetype=file.content_type, as_attachment=False)
+    except NoFile:
+        return abort(404)
+
+# 💡 Corrección: Ruta para enviar mensajes con archivos multimedia en GridFS
 @app.route('/send_message', methods=['POST'])
 def send_message():
     from_user = session.get('alias')
@@ -1806,7 +1695,6 @@ def send_message():
     msg_text = request.form.get('message', '').strip()
     timestamp = request.form.get('timestamp')
     
-    # Sanear los nombres para el canal de Pusher
     sala = "_".join(sorted([sanitize_for_pusher(from_user), sanitize_for_pusher(to_user)]))
     
     tipo = 'text'
@@ -1814,16 +1702,13 @@ def send_message():
 
     if 'media' in request.files:
         media_file = request.files['media']
-        if media_file and allowed_file_chat(media_file.filename):
-            filename = secure_filename(f"{from_user}_{int(time.time())}_{media_file.filename}")
-            upload_path = os.path.join(app.root_path, 'static', 'uploads', 'chat')
-            os.makedirs(upload_path, exist_ok=True)
-            filepath = os.path.join(upload_path, filename)
-            media_file.save(filepath)
-
-            ext = filename.rsplit('.', 1)[1].lower()
+        if media_file and allowed_file(media_file.filename, ALLOWED_CHAT):
+            # Subir el archivo a GridFS
+            file_id = fs.put(media_file, filename=secure_filename(f"{from_user}_{int(time.time())}_{media_file.filename}"), content_type=media_file.content_type)
+            # Guardar el ID del archivo en el mensaje
+            mensaje_a_guardar = str(file_id)
+            ext = media_file.filename.rsplit('.', 1)[1].lower()
             tipo = 'image' if ext in {'png', 'jpg', 'jpeg', 'gif'} else 'audio'
-            mensaje_a_guardar = filename
             msg_text = ''
         elif media_file:
             return 'Archivo no permitido', 400
@@ -1853,26 +1738,25 @@ def send_message():
     })
 
     return 'OK'
-# ---------------------------------------------------------------------------
-# Carpeta de verificación y retiro
-from flask import Flask, render_template, request, redirect, url_for, flash, session
-from pymongo import MongoClient
-from werkzeug.utils import secure_filename
-from datetime import datetime, timedelta
-import os, uuid
-
-# Carpeta de verificación
-UPLOAD_FOLDER = "static/uploads/verificacion"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # -----------------------
 # FORMULARIO DE VERIFICACIÓN
 # -----------------------
+from flask import render_template, redirect, url_for, session, flash, request
+from werkzeug.utils import secure_filename
+from bson.objectid import ObjectId
+from uuid import uuid4
+from datetime import datetime
+import os
+# Se requiere importar GridFSBucket
+from gridfs import GridFSBucket
+
+# Suponiendo que estas variables están definidas en tu app principal
+# app = Flask(__name__)
+# usuarios_col = db.users
+# retiros_col = db.retiros
+# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
+
 @app.route("/verificar", methods=["GET", "POST"])
 def verificar():
     alias = session.get("alias")
@@ -1885,21 +1769,22 @@ def verificar():
         cuenta_bancaria = request.form.get("cuenta_bancaria")
         correo = request.form.get("correo")
 
-        # Guardar archivos
+        # Guardar archivos en GridFS
         ine_frontal = request.files.get("ine_frontal")
         ine_trasera = request.files.get("ine_trasera")
         selfie_ine = request.files.get("selfie_ine")
 
-        carpeta = f"static/verificaciones/{alias}"
-        os.makedirs(carpeta, exist_ok=True)
+        ine_frontal_id = None
+        ine_trasera_id = None
+        selfie_ine_id = None
 
         if ine_frontal:
-            ine_frontal.save(os.path.join(carpeta, "ine_frontal.jpg"))
+            ine_frontal_id = fs.put(ine_frontal, filename=f"{alias}_ine_frontal", content_type=ine_frontal.content_type)
         if ine_trasera:
-            ine_trasera.save(os.path.join(carpeta, "ine_trasera.jpg"))
+            ine_trasera_id = fs.put(ine_trasera, filename=f"{alias}_ine_trasera", content_type=ine_trasera.content_type)
         if selfie_ine:
-            selfie_ine.save(os.path.join(carpeta, "selfie_ine.jpg"))
-
+            selfie_ine_id = fs.put(selfie_ine, filename=f"{alias}_selfie_ine", content_type=selfie_ine.content_type)
+        
         # Marcar como verificado en Mongo
         usuarios_col.update_one(
             {"alias": alias},
@@ -1907,7 +1792,10 @@ def verificar():
                 "verificado": True,
                 "nombre": nombre,
                 "cuenta_bancaria": cuenta_bancaria,
-                "correo": correo
+                "correo": correo,
+                "ine_frontal_id": str(ine_frontal_id),
+                "ine_trasera_id": str(ine_trasera_id),
+                "selfie_ine_id": str(selfie_ine_id)
             }}
         )
 

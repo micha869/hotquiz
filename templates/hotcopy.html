@@ -28,7 +28,7 @@
         <div class="photo-group">
             <div class="photo-card original">
                 <span class="label-foto">ORIGINAL</span>
-                <img src="{{ url_for('static', filename=o.image) }}" alt="Foto original de {{ o.user }}" />
+                <img src="{{ url_for('serve_media', file_id=o.image) }}" alt="Foto original de {{ o.user }}" />
                 <div class="info">
                     <strong>{{ o.user }}</strong>
                     <small>{{ o.fecha.strftime("%d/%m/%Y %H:%M") }}</small>
@@ -60,7 +60,7 @@
                 {% for c in o.imitations %}
                 <div class="photo-card imitation">
                     <span class="label-foto">IMITACIÓN</span>
-                    <img src="{{ url_for('static', filename=c.image) }}" alt="Imitación de {{ c.user }}" />
+                    <img src="{{ url_for('serve_media', file_id=c.image) }}" alt="Imitación de {{ c.user }}" />
                     <div class="info">
                         <strong>{{ c.user }}</strong>
                         <small>{{ c.fecha.strftime("%d/%m/%Y %H:%M") }}</small>

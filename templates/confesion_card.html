@@ -15,14 +15,14 @@
 
     {% if conf.imagen %}
     <div class="conf-media-container">
-        <img class="conf-image" src="{{ url_for('static', filename=conf.imagen) }}" alt="Imagen de la confesión">
+        <img class="conf-image" src="{{ url_for('serve_media', file_id=conf.imagen) }}" alt="Imagen de la confesión">
     </div>
     {% endif %}
 
     {% if conf.audio %}
     <div class="conf-media-container">
         <audio controls class="audio-player" preload="none">
-            <source src="{{ url_for('static', filename=conf.audio) }}" type="audio/{{ conf.audio.rsplit('.', 1)[1].lower() }}">
+            <source src="{{ url_for('serve_media', file_id=conf.audio) }}" type="audio/{{ conf.audio.rsplit('.', 1)[1].lower() }}">
             Tu navegador no soporta el elemento de audio.
         </audio>
     </div>
