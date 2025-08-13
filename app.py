@@ -28,7 +28,7 @@ import certifi
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
-app.permanent_session_lifetime = timedelta(days=30)  # duración de la cookie
+app.permanent_session_lifetime = timedelta(days=30) # duración de la cookie
 socketio = SocketIO(app)
 client = MongoClient(os.getenv("MONGODB_URI"), tlsCAFile=certifi.where())
 db = client.hotquiz
