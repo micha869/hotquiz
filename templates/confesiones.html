@@ -1,42 +1,44 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="fondo-neon" style="margin: 0; background: #1a0033; min-height: 100vh; padding: 20px;">
-    <div class="container" style="max-width: 600px; margin: auto;">
-        <h1 class="titulo-neon" style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #ff33cc; text-shadow: 0 0 10px #ff33cc, 0 0 20px #cc00ff;">Confesiones Anónimas</h1>
+<div class="main-container">
+    <div class="container">
+        <h1 class="title">Confesiones Anónimas</h1>
 
         <button class="btn-floating" id="btn-new-conf">+</button>
 
-        <a href="{{ url_for('inicio') }}" class="btn-futurista rojo" style="position: fixed; bottom: 90px; right: 20px; z-index: 1001;">
+        <a href="{{ url_for('inicio') }}" class="btn-home">
             🏠 Inicio
         </a>
         <div class="modal" id="modal">
-            <div class="modal-content" style="background:#29004d; padding:20px; border-radius:15px; max-width:500px; margin:auto; box-shadow: 0 0 25px #ff33cc;">
-                <span class="close" id="modal-close" style="float:right; font-size:28px; cursor:pointer; color:#ff33cc;">&times;</span>
+            <div class="modal-content">
+                <span class="close" id="modal-close">&times;</span>
                 <form action="{{ url_for('confesiones') }}" method="POST" enctype="multipart/form-data" id="form-confesion">
-                    <textarea name="texto" placeholder="Escribe tu confesión caliente..." required style="width:100%; height:120px; background:#330066; color:#fff; border:none; border-radius:10px; padding:10px; resize:none; font-size:16px; box-shadow: 0 0 10px #cc00ff;"></textarea>
-                    <input type="file" name="media" accept="image/*,audio/*" style="margin-top:10px; color:#ff33cc; background:#330066; border:none; padding:8px; border-radius:8px;">
-                    <label style="color:#ff99ff; display:block; margin-top:10px;">Color de fondo:</label>
-                    <input type="color" name="color" value="#330066" style="width:100%; height:40px; border:none; border-radius:10px; box-shadow: 0 0 10px #cc00ff;">
-                    <div style="display:flex; justify-content:space-between; margin-top:20px;">
-                        <button type="button" class="btn-futurista rojo" id="btn-descartar">✖ Descartar</button>
-                        <button type="submit" class="btn-futurista verde">🚀 Publicar</button>
+                    <textarea name="texto" placeholder="Escribe tu confesión..." required></textarea>
+                    <input type="file" name="media" accept="image/*,audio/*">
+                    <div class="color-picker-container">
+                        <label>Color de fondo:</label>
+                        <input type="color" name="color" value="#ffffff">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="btn-descartar">✖ Descartar</button>
+                        <button type="submit" class="btn-submit">Publicar</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="filtros" style="margin-top: 20px; text-align: center;">
-            <button onclick="cargarFiltro('nuevas')" class="btn-futurista filtro">🆕 Nuevas</button>
-            <button onclick="cargarFiltro('populares')" class="btn-futurista filtro">🔥 Populares</button>
-            <button onclick="location.reload()" class="btn-futurista filtro">🔁 Recargar</button>
-            <button onclick="alternarModo()" class="btn-futurista filtro">🌓 Modo</button>
+        <div class="filters">
+            <button onclick="cargarFiltro('nuevas')" class="btn-filter">🆕 Nuevas</button>
+            <button onclick="cargarFiltro('populares')" class="btn-filter">🔥 Populares</button>
+            <button onclick="cargarFiltro('aleatorio')" class="btn-filter">🎲 Aleatorio</button>
         </div>
-        <div id="contenedor-confesiones" style="margin-top: 20px;">
+
+        <div id="contenedor-confesiones" class="confesiones-grid">
             {% for conf in confesiones %}
             {% include "confesiones_card.html" %}
             {% endfor %}
         </div>
-        <div id="loading" style="text-align:center; margin:20px; display:none;">Cargando...</div>
+        <div id="loading" class="loading-message" style="display:none;">Cargando más confesiones...</div>
     </div>
 </div>
 
@@ -45,333 +47,39 @@
 <script src="{{ url_for('static', filename='js/confesiones.js') }}"></script>
 
 <style>
- /* ==== RESET Y FUENTES ==== */
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    body {
-        background-color: #FAFAFA;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        color: #262626;
-        min-height: 100vh;
-    }
-
-    .container {
-        max-width: 600px;
-        margin: auto;
-        padding: 20px;
-    }
-
-    /* ==== TÍTULO ==== */
-    .titulo {
-        text-align: center;
-        font-size: 2.5rem;
-        color: #E1306C;
-        margin-bottom: 2rem;
-    }
-    
-    /* ==== BOTÓN DE AÑADIR ==== */
-    .btn-floating {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background-color: #E1306C;
-        color: white;
-        font-size: 2.5rem;
-        line-height: 60px;
-        text-align: center;
-        border: none;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-        cursor: pointer;
-        z-index: 1001;
-        transition: transform 0.2s ease;
-    }
-
-    .btn-floating:hover {
-        transform: scale(1.1);
-        background-color: #C13584;
-    }
-
-    .home-btn {
-        position: fixed;
-        bottom: 90px;
-        right: 20px;
-        z-index: 1001;
-    }
-
-    /* ==== MODAL ==== */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1002;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.4);
-        padding-top: 60px;
-    }
-
-    .modal-content {
-        background-color: #FFFFFF;
-        margin: 5% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        border-radius: 15px;
-        max-width: 500px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    .close {
-        color: #aaa;
-        float: right;
-        font-size: 28px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .close:hover, .close:focus {
-        color: #E1306C;
-        text-decoration: none;
-    }
-
-    form textarea {
-        width: 100%;
-        height: 120px;
-        background-color: #F8F8F8;
-        color: #262626;
-        border: 1px solid #DBDBDB;
-        border-radius: 8px;
-        padding: 10px;
-        resize: none;
-        font-size: 16px;
-        margin-bottom: 10px;
-    }
-    
-    form input[type="file"] {
-        margin-top: 10px;
-        color: #E1306C;
-        background: #F8F8F8;
-        border: 1px solid #DBDBDB;
-        padding: 8px;
-        border-radius: 8px;
-        width: 100%;
-    }
-
-    form label {
-        color: #737373;
-        display: block;
-        margin-top: 10px;
-    }
-
-    form input[type="color"] {
-        width: 100%;
-        height: 40px;
-        border: 1px solid #DBDBDB;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-    
-    .form-actions {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-    }
-
-    .btn-futurista {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        text-decoration: none;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-    .btn-futurista.rojo {
-        background: #FF4081;
-    }
-
-    .btn-futurista.verde {
-        background: #E1306C;
-    }
-
-    .btn-futurista.rojo:hover { background: #E91E63; }
-    .btn-futurista.verde:hover { background: #C13584; }
-
-    /* ==== FILTROS ==== */
-    .filtros {
-        margin-top: 20px;
-        text-align: center;
-    }
-    
-    .btn-filtro {
-        background: #FFFFFF;
-        border: 1px solid #DBDBDB;
-        color: #E1306C;
-        padding: 8px 15px;
-        border-radius: 8px;
-        cursor: pointer;
-        margin: 5px;
-    }
-
-    .btn-filtro:hover {
-        background-color: #EFEFEF;
-    }
-    
-    /* ==== TARJETAS DE CONFESIONES ==== */
-    .confesion-card {
-        position: relative;
-        padding: 20px;
-        margin: 20px auto;
-        border-radius: 15px;
-        color: #262626;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        overflow-wrap: break-word;
-        background-color: #FFFFFF;
-        border: 1px solid #DBDBDB;
-    }
-
-    .card-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        justify-content: space-between;
-    }
-
-    .user-info {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .user-name {
-        margin: 0;
-        font-weight: bold;
-        color: #E1306C;
-    }
-
-    .confesion-text {
-        margin-top: 15px;
-        white-space: pre-wrap;
-        text-align: justify;
-        padding: 0 5px;
-        color: #262626;
-    }
-
-    .conf-media-container {
-        text-align: center;
-        margin-top: 15px;
-    }
-    
-    .conf-image {
-        max-width: 100%;
-        max-height: 400px;
-        border-radius: 10px;
-        object-fit: contain;
-        border: 1px solid #DBDBDB;
-    }
-
-    .audio-player audio {
-        width: 100%;
-        border-radius: 50px;
-        outline: none;
-        background: #F8F8F8;
-    }
-    
-    .reacciones {
-        margin-top: 15px;
-        display: flex;
-        gap: 5px;
-        flex-wrap: wrap;
-    }
-    
-    .reacciones .emoji-btn {
-        background: #EFEFEF;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 20px;
-        cursor: pointer;
-        font-size: 16px;
-        color: #262626;
-        transition: 0.2s;
-    }
-    
-    .reacciones .emoji-btn:hover {
-        background: #E1306C;
-        color: white;
-        transform: scale(1.1);
-    }
-    
-    .reacciones .emoji-btn span {
-        margin-left: 5px;
-        font-size: 0.9em;
-        color: #E1306C;
-    }
-
-    .comentarios-container {
-        margin-top: 15px;
-    }
-    
-    .comentario-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        margin-bottom: 5px;
-    }
-    
-    .comentario-info {
-        flex: 1;
-    }
-
-    .comentario-info p {
-        margin: 0;
-        color: inherit;
-    }
-
-    .comentario-box {
-        display: flex;
-        align-items: center;
-        margin-top: 10px;
-        gap: 8px;
-    }
-
-    .comentario-box input {
-        flex-grow: 1;
-        padding: 8px 12px;
-        border-radius: 25px;
-        border: 1px solid #DBDBDB;
-        outline: none;
-        font-size: 16px;
-        background: #F8F8F8;
-        color: #262626;
-    }
-    
-    .enviar-btn, .eliminar-btn {
-        background: #E1306C;
-        color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 35px;
-        height: 35px;
-        cursor: pointer;
-        font-size: 16px;
-        transition: transform 0.2s;
-    }
-
-    .enviar-btn:hover, .eliminar-btn:hover {
-        transform: scale(1.1);
-    }
-
-    .eliminar-btn {
-        background: #FF4081;
-    }
+    /* Estilos globales y reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #FAFAFA; color: #262626; min-height: 100vh; }
+    .container { max-width: 600px; margin: auto; padding: 20px; }
+    .main-container { background-color: #FAFAFA; min-height: 100vh; padding: 20px; }
+    .title { text-align: center; font-size: 2.5rem; color: #E1306C; margin-bottom: 2rem; }
+    /* Botón flotante para publicar */
+    .btn-floating { position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px; border-radius: 50%; background-color: #E1306C; color: white; font-size: 2.5rem; line-height: 60px; text-align: center; border: none; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); cursor: pointer; z-index: 1001; transition: transform 0.2s ease; }
+    .btn-floating:hover { transform: scale(1.1); background-color: #C13584; }
+    /* Botón de inicio */
+    .btn-home { position: fixed; bottom: 90px; right: 20px; z-index: 1001; background: #E1306C; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background-color 0.2s ease; }
+    .btn-home:hover { background: #C13584; }
+    /* Modal de publicación */
+    .modal { display: none; position: fixed; z-index: 1002; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); padding-top: 60px; }
+    .modal-content { background-color: #FFFFFF; margin: 5% auto; padding: 20px; border: 1px solid #DBDBDB; border-radius: 15px; max-width: 500px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover, .close:focus { color: #E1306C; text-decoration: none; }
+    form textarea { width: 100%; height: 120px; background-color: #F8F8F8; color: #262626; border: 1px solid #DBDBDB; border-radius: 8px; padding: 10px; resize: none; font-size: 16px; margin-bottom: 10px; }
+    form input[type="file"] { margin-top: 10px; color: #E1306C; background: #F8F8F8; border: 1px solid #DBDBDB; padding: 8px; border-radius: 8px; width: 100%; }
+    .color-picker-container { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .color-picker-container label { color: #737373; margin-right: 10px; }
+    form input[type="color"] { width: 50%; height: 40px; border: 1px solid #DBDBDB; border-radius: 8px; cursor: pointer; }
+    .form-actions { display: flex; justify-content: space-between; margin-top: 20px; }
+    .btn-cancel, .btn-submit { padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; text-decoration: none; color: white; cursor: pointer; transition: background-color 0.2s ease; }
+    .btn-cancel { background: #E91E63; }
+    .btn-submit { background: #E1306C; }
+    .btn-cancel:hover { background: #D81B60; }
+    .btn-submit:hover { background: #C13584; }
+    /* Filtros */
+    .filters { margin-top: 20px; text-align: center; }
+    .btn-filter { background: #FFFFFF; border: 1px solid #DBDBDB; color: #E1306C; padding: 8px 15px; border-radius: 8px; cursor: pointer; margin: 5px; }
+    .btn-filter:hover { background-color: #EFEFEF; }
+    /* Mensaje de carga */
+    .loading-message { text-align: center; margin: 20px; color: #737373; font-size: 1.2em; }
 </style>
 {% endblock %}
