@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
-{% block title %}🔥 Casino HotQuiz{% endblock %}
-
+{% block title %}Confesiones | HotQuiz{% endblock %}
 {% block content %}
 <style>
     /* ==== RESET Y FUENTES ==== */
@@ -10,187 +8,431 @@
         padding: 0;
         box-sizing: border-box;
     }
-
+    
     body {
-        /* Fondo blanco/gris claro como Instagram */
-        background-color: #FAFAFA;
+        background-color: #FAFAFA; /* Fondo blanco/gris claro como Instagram */
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         color: #262626; /* Color de texto oscuro */
-        display: flex;
-        justify-content: center;
-        align-items: center;
         min-height: 100vh;
     }
 
-    /* ==== CONTENEDOR PRINCIPAL ==== */
-    .casino-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        padding: 2.5rem 1.5rem;
-        background-color: #FFFFFF;
-        border: 1px solid #DBDBDB;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-        max-width: 450px;
-        width: 90%; /* Ancho responsivo */
-    }
-    
-    /* ==== TÍTULOS Y TEXTO ==== */
-    .titulo {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        color: #E1306C; /* Rosa vibrante para el título */
+    .container {
+        max-width: 600px;
+        margin: auto;
+        padding: 20px;
     }
 
-    .subtitulo {
-        font-size: 1rem;
-        color: #8E8E8E; /* Texto secundario en gris */
+    /* ==== TÍTULO ==== */
+    .titulo {
+        text-align: center;
+        font-size: 2.5rem;
+        color: #E1306C; /* Un rosa vibrante para el título */
         margin-bottom: 2rem;
     }
 
-    .saludo {
-        font-size: 1.2rem;
-        color: #262626;
-        margin-top: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .saludo strong {
-        color: #E1306C;
-    }
-
-    /* ==== BOTONERA Y GRID DE JUEGOS ==== */
-    .botonera, .game-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        width: 100%;
-    }
-
-    .game-grid {
-        display: grid;
-        grid-template-columns: 1fr; /* Una columna por defecto */
-        gap: 1rem;
-        width: 100%;
-    }
-
-    @media (min-width: 576px) {
-        .game-grid {
-            grid-template-columns: repeat(2, 1fr); /* Dos columnas en dispositivos más grandes */
-        }
-    }
-
-    /* ==== BOTONES ==== */
-    .boton-menu {
-        display: block;
-        padding: 0.8rem 1.5rem;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: background-color 0.3s ease, transform 0.2s ease;
-    }
-    
-    .boton-login, .boton-registro {
-        background: #E1306C;
+    /* ==== BOTÓN DE AÑADIR ==== */
+    .btn-floating {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #E1306C;
         color: white;
-    }
-
-    .boton-login:hover, .boton-registro:hover {
-        background: #C13584;
-    }
-
-    .game-card-link {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background: #F8F8F8;
-        border: 1px solid #DBDBDB;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #262626;
-        text-decoration: none;
+        font-size: 2.5rem;
+        line-height: 60px;
+        text-align: center;
+        border: none;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        cursor: pointer;
+        z-index: 1001;
         transition: transform 0.2s ease;
     }
 
-    .game-card-link:hover {
-        transform: scale(1.03);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .emoji {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
+    .btn-floating:hover {
+        transform: scale(1.1);
+        background-color: #C13584;
     }
 
-    .card-title {
-        font-size: 1rem;
-        font-weight: 600;
-        margin-bottom: 0.2rem;
+    /* ==== MODAL ==== */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1002;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+        padding-top: 60px;
+    }
+
+    .modal-content {
+        background-color: #FFFFFF;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #DBDBDB;
+        border-radius: 15px;
+        max-width: 500px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover, .close:focus {
+        color: #E1306C;
+        text-decoration: none;
+    }
+
+    form textarea {
+        width: 100%;
+        height: 120px;
+        background-color: #F8F8F8;
+        color: #262626;
+        border: 1px solid #DBDBDB;
+        border-radius: 8px;
+        padding: 10px;
+        resize: none;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    
+    form input[type="file"] {
+        margin-top: 10px;
+        color: #E1306C;
+        background: #F8F8F8;
+        border: 1px solid #DBDBDB;
+        padding: 8px;
+        border-radius: 8px;
+        width: 100%;
+    }
+
+    form label {
+        color: #737373;
+        display: block;
+        margin-top: 10px;
+    }
+
+    form input[type="color"] {
+        width: 100%;
+        height: 40px;
+        border: 1px solid #DBDBDB;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+
+    .btn-futurista {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        text-decoration: none;
+        color: white;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .btn-futurista.rojo {
+        background: #FF4081;
+    }
+
+    .btn-futurista.verde {
+        background: #E1306C;
+    }
+
+    .btn-futurista.rojo:hover { background: #E91E63; }
+    .btn-futurista.verde:hover { background: #C13584; }
+
+    /* ==== FILTROS ==== */
+    .filtros {
+        margin-top: 20px;
+        text-align: center;
+    }
+    
+    .btn-filtro {
+        background: #FFFFFF;
+        border: 1px solid #DBDBDB;
+        color: #E1306C;
+        padding: 8px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 5px;
+    }
+
+    .btn-filtro:hover {
+        background-color: #EFEFEF;
+    }
+
+    /* ==== TARJETAS DE CONFESIONES ==== */
+    .confesion-card {
+        position: relative;
+        padding: 20px;
+        margin: 20px auto;
+        border-radius: 15px;
+        color: #262626;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        overflow-wrap: break-word;
+        background-color: #FFFFFF;
+        border: 1px solid #DBDBDB;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-name {
+        margin: 0;
+        font-weight: bold;
         color: #E1306C;
     }
 
-    .card-text {
-        font-size: 0.8rem;
-        color: #8E8E8E;
+    .confesion-text {
+        margin-top: 15px;
+        white-space: pre-wrap;
+        text-align: justify;
+        padding: 0 5px;
+        color: #262626;
     }
 
+    .conf-media-container {
+        text-align: center;
+        margin-top: 15px;
+    }
+    
+    .conf-image {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 10px;
+        object-fit: contain;
+        border: 1px solid #DBDBDB;
+    }
+
+    .audio-player audio {
+        width: 100%;
+        border-radius: 50px;
+        outline: none;
+        background: #F8F8F8;
+    }
+    
+    .reacciones {
+        margin-top: 15px;
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    
+    .reacciones .emoji-btn {
+        background: #EFEFEF;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 16px;
+        color: #262626;
+        transition: 0.2s;
+    }
+    
+    .reacciones .emoji-btn:hover {
+        background: #E1306C;
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .reacciones .emoji-btn span {
+        margin-left: 5px;
+        font-size: 0.9em;
+        color: #E1306C;
+    }
+
+    .comentarios-container {
+        margin-top: 15px;
+    }
+    
+    .comentario-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    
+    .comentario-info {
+        flex: 1;
+    }
+
+    .comentario-info p {
+        margin: 0;
+        color: #262626;
+    }
+
+    .comentario-box {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+        gap: 8px;
+    }
+
+    .comentario-box input {
+        flex-grow: 1;
+        padding: 8px 12px;
+        border-radius: 25px;
+        border: 1px solid #DBDBDB;
+        outline: none;
+        font-size: 16px;
+        background: #F8F8F8;
+        color: #262626;
+    }
+    
+    .enviar-btn, .eliminar-btn {
+        background: #E1306C;
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: transform 0.2s;
+    }
+
+    .enviar-btn:hover, .eliminar-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .eliminar-btn {
+        background: #FF4081;
+    }
 </style>
 
-<div class="casino-container">
-    <h1 class="titulo">🔥 HotQuiz</h1>
-    <p class="subtitulo">¡Bienvenido a la mejor experiencia de quizzes y confesiones!</p>
+<div class="container">
+    <h1 class="titulo">Confesiones Anónimas</h1>
 
-    {% if not session.get('alias') %}
-        <div class="botonera">
-            <a href="{{ url_for('login') }}" class="boton-menu boton-login">🔐 Iniciar sesión</a>
-            <a href="{{ url_for('registro') }}" class="boton-menu boton-registro">📝 Registrarse</a>
+    <button class="btn-floating" id="btn-new-conf">+</button>
+
+    <a href="{{ url_for('inicio') }}" class="btn-futurista rojo" style="position: fixed; bottom: 90px; right: 20px; z-index: 1001;">
+        🏠 Inicio
+    </a>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close" id="modal-close">&times;</span>
+            <form action="{{ url_for('confesiones') }}" method="POST" enctype="multipart/form-data" id="form-confesion">
+                <textarea name="texto" placeholder="Escribe tu confesión caliente..." required></textarea>
+                <input type="file" name="media" accept="image/*,audio/*">
+                <label>Color de fondo:</label>
+                <input type="color" name="color" value="#FFFFFF">
+                <div class="form-actions">
+                    <button type="button" class="btn-futurista rojo" id="btn-descartar">✖ Descartar</button>
+                    <button type="submit" class="btn-futurista verde">🚀 Publicar</button>
+                </div>
+            </form>
         </div>
-    {% else %}
-        <p class="saludo">👋 Hola, <strong>{{ session.alias }}</strong></p>
-        <p class="subtitulo">Tokens Oro: <strong>{{ saldo }}</strong> | Plata: <strong>{{ saldo_plata }}</strong></p>
+    </div>
 
-        <h2 class="titulo" style="font-size: 1.5rem; margin-top: 1.5rem;">🎮 Juegos Calientes</h2>
+    <div class="filtros">
+        <button onclick="cargarFiltro('nuevas')" class="btn-futurista btn-filtro">🆕 Nuevas</button>
+        <button onclick="cargarFiltro('populares')" class="btn-futurista btn-filtro">🔥 Populares</button>
+        <button onclick="location.reload()" class="btn-futurista btn-filtro">🔁 Recargar</button>
+        <button onclick="alternarModo()" class="btn-futurista btn-filtro">🌓 Modo</button>
+    </div>
 
-        <div class="game-grid">
-            <a href="{{ url_for('lanzar') }}" class="game-card-link">
-                <div class="emoji">🚀</div>
-                <h3 class="card-title">Lanzar Retos</h3>
-                <p class="card-text">Crea un reto atrevido para el público.</p>
-            </a>
-            
-            <a href="{{ url_for('foto_hot') }}" class="game-card-link">
-                <div class="emoji">🔥</div>
-                <h3 class="card-title">¿Quién calienta más?</h3>
-                <p class="card-text">Sube tu foto más hot.</p>
-            </a>
+    <div id="contenedor-confesiones">
+        {% for conf in confesiones %}
+            {% include "confesiones_card.html" %}
+        {% endfor %}
+    </div>
 
-            <a href="{{ url_for('audio_hot') }}" class="game-card-link">
-                <div class="emoji">🎙️</div>
-                <h3 class="card-title">Susurra y Gana</h3>
-                <p class="card-text">Graba tu voz más sexy.</p>
-            </a>
-
-            <a href="{{ url_for('hot_roulette') }}" class="game-card-link">
-                <div class="emoji">🎲</div>
-                <h3 class="card-title">Hot Roulette</h3>
-                <p class="card-text">Gira la ruleta: ¿Verdad o Reto?</p>
-            </a>
-
-            <a href="{{ url_for('hotcopy') }}" class="game-card-link">
-                <div class="emoji">📸</div>
-                <h3 class="card-title">HotCopy</h3>
-                <p class="card-text">Imita la pose más provocadora.</p>
-            </a>
-            
-            <a href="{{ url_for('adivina') }}" class="game-card-link">
-                <div class="emoji">🕵️‍♀️</div>
-                <h3 class="card-title">¿Quién lo dijo?</h3>
-                <p class="card-text">Adivina la mente perversa detrás de la confesión.</p>
-            </a>
-        </div>
-    {% endif %}
+    <div id="loading" style="text-align:center; margin:20px; display:none;">Cargando...</div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/confesiones.js') }}"></script>
+<script>
+    // Lógica para el modal (ocultar y mostrar)
+    var modal = document.getElementById("modal");
+    var btn = document.getElementById("btn-new-conf");
+    var span = document.getElementById("modal-close");
+    var discardBtn = document.getElementById("btn-descartar");
+    
+    btn.onclick = function() {
+        modal.style.display = "block";
+    }
+
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    discardBtn.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+
+    function alternarModo() {
+        document.body.classList.toggle('modo-claro');
+        var isLightMode = document.body.classList.contains('modo-claro');
+        localStorage.setItem('modoClaro', isLightMode);
+
+        // Puedes agregar lógica para actualizar los estilos de las tarjetas
+        // si la base de datos devuelve un color de fondo para la tarjeta.
+        // Aquí se actualiza el color de la tarjeta si la confesión no tiene uno.
+        const tarjetas = document.querySelectorAll('.confesion-card');
+        tarjetas.forEach(tarjeta => {
+            if (tarjeta.style.backgroundColor === '' || tarjeta.style.backgroundColor.toLowerCase() === 'rgb(51, 0, 102)') {
+                tarjeta.style.backgroundColor = isLightMode ? '#ffffff' : '#330066';
+                tarjeta.style.color = isLightMode ? '#262626' : '#fff';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const isLightMode = localStorage.getItem('modoClaro') === 'true';
+        if (isLightMode) {
+            document.body.classList.add('modo-claro');
+        }
+    });
+
+    // Lógica para cargar filtros (Asume que usas jQuery para AJAX)
+    function cargarFiltro(filtro) {
+        $('#contenedor-confesiones').empty();
+        $('#loading').show();
+        $.ajax({
+            url: `{{ url_for('confesiones') }}?filtro=${filtro}`,
+            type: 'GET',
+            success: function(data) {
+                $('#loading').hide();
+                $('#contenedor-confesiones').html($(data).find('#contenedor-confesiones').html());
+            },
+            error: function() {
+                $('#loading').hide();
+                $('#contenedor-confesiones').html('<p style="color:red; text-align:center;">Error al cargar las confesiones.</p>');
+            }
+        });
+    }
+</script>
+
 {% endblock %}
