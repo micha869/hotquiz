@@ -1,8 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Confesiones | HotQuiz{% endblock %}
 {% block content %}
+<div class="fondo-neon" style="margin: 0; background: #1a0033; min-height: 100vh; padding: 20px;">
+    <div class="container" style="max-width: 600px; margin: auto;">
+        <h1 class="titulo-neon" style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #ff33cc; text-shadow: 0 0 10px #ff33cc, 0 0 20px #cc00ff;">Confesiones Anónimas</h1>
+
+        <button class="btn-floating" id="btn-new-conf">+</button>
+
+        <a href="{{ url_for('inicio') }}" class="btn-futurista rojo" style="position: fixed; bottom: 90px; right: 20px; z-index: 1001;">
+            🏠 Inicio
+        </a>
+        <div class="modal" id="modal">
+            <div class="modal-content" style="background:#29004d; padding:20px; border-radius:15px; max-width:500px; margin:auto; box-shadow: 0 0 25px #ff33cc;">
+                <span class="close" id="modal-close" style="float:right; font-size:28px; cursor:pointer; color:#ff33cc;">&times;</span>
+                <form action="{{ url_for('confesiones') }}" method="POST" enctype="multipart/form-data" id="form-confesion">
+                    <textarea name="texto" placeholder="Escribe tu confesión caliente..." required style="width:100%; height:120px; background:#330066; color:#fff; border:none; border-radius:10px; padding:10px; resize:none; font-size:16px; box-shadow: 0 0 10px #cc00ff;"></textarea>
+                    <input type="file" name="media" accept="image/*,audio/*" style="margin-top:10px; color:#ff33cc; background:#330066; border:none; padding:8px; border-radius:8px;">
+                    <label style="color:#ff99ff; display:block; margin-top:10px;">Color de fondo:</label>
+                    <input type="color" name="color" value="#330066" style="width:100%; height:40px; border:none; border-radius:10px; box-shadow: 0 0 10px #cc00ff;">
+                    <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                        <button type="button" class="btn-futurista rojo" id="btn-descartar">✖ Descartar</button>
+                        <button type="submit" class="btn-futurista verde">🚀 Publicar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="filtros" style="margin-top: 20px; text-align: center;">
+            <button onclick="cargarFiltro('nuevas')" class="btn-futurista filtro">🆕 Nuevas</button>
+            <button onclick="cargarFiltro('populares')" class="btn-futurista filtro">🔥 Populares</button>
+            <button onclick="location.reload()" class="btn-futurista filtro">🔁 Recargar</button>
+            <button onclick="alternarModo()" class="btn-futurista filtro">🌓 Modo</button>
+        </div>
+        <div id="contenedor-confesiones" style="margin-top: 20px;">
+            {% for conf in confesiones %}
+            {% include "confesiones_card.html" %}
+            {% endfor %}
+        </div>
+        <div id="loading" style="text-align:center; margin:20px; display:none;">Cargando...</div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/confesiones.css') }}">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/confesiones.js') }}"></script>
+
 <style>
-    /* ==== RESET Y FUENTES ==== */
+ /* ==== RESET Y FUENTES ==== */
     * {
         margin: 0;
         padding: 0;
@@ -11,10 +54,8 @@
     
     body {
         background-color: #FAFAFA;
-        /* Fondo blanco/gris claro como Instagram */
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         color: #262626;
-        /* Color de texto oscuro */
         min-height: 100vh;
     }
 
@@ -29,10 +70,9 @@
         text-align: center;
         font-size: 2.5rem;
         color: #E1306C;
-        /* Un rosa vibrante para el título */
         margin-bottom: 2rem;
     }
-
+    
     /* ==== BOTÓN DE AÑADIR ==== */
     .btn-floating {
         position: fixed;
@@ -58,6 +98,13 @@
         background-color: #C13584;
     }
 
+    .home-btn {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        z-index: 1001;
+    }
+
     /* ==== MODAL ==== */
     .modal {
         display: none;
@@ -68,7 +115,7 @@
         width: 100%;
         height: 100%;
         overflow: auto;
-        background-color: rgba(0, 0, 0, 0.4);
+        background-color: rgba(0,0,0,0.4);
         padding-top: 60px;
     }
 
@@ -76,10 +123,10 @@
         background-color: #FFFFFF;
         margin: 5% auto;
         padding: 20px;
-        border: 1px solid #DBDBDB;
+        border: 1px solid #888;
         border-radius: 15px;
         max-width: 500px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     }
 
     .close {
@@ -90,8 +137,7 @@
         cursor: pointer;
     }
 
-    .close:hover,
-    .close:focus {
+    .close:hover, .close:focus {
         color: #E1306C;
         text-decoration: none;
     }
@@ -158,13 +204,8 @@
         background: #E1306C;
     }
 
-    .btn-futurista.rojo:hover {
-        background: #E91E63;
-    }
-
-    .btn-futurista.verde:hover {
-        background: #C13584;
-    }
+    .btn-futurista.rojo:hover { background: #E91E63; }
+    .btn-futurista.verde:hover { background: #C13584; }
 
     /* ==== FILTROS ==== */
     .filtros {
@@ -185,7 +226,7 @@
     .btn-filtro:hover {
         background-color: #EFEFEF;
     }
-
+    
     /* ==== TARJETAS DE CONFESIONES ==== */
     .confesion-card {
         position: relative;
@@ -196,16 +237,14 @@
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         overflow-wrap: break-word;
         background-color: #FFFFFF;
-        /* Color de fondo por defecto */
         border: 1px solid #DBDBDB;
     }
 
     .card-header {
         display: flex;
-        justify-content: space-between;
-        /* Alinea los elementos a los extremos */
         align-items: center;
         gap: 10px;
+        justify-content: space-between;
     }
 
     .user-info {
@@ -224,8 +263,7 @@
         white-space: pre-wrap;
         text-align: justify;
         padding: 0 5px;
-        color: inherit;
-        /* Hereda el color de la tarjeta para que se adapte */
+        color: #262626;
     }
 
     .conf-media-container {
@@ -248,7 +286,6 @@
         background: #F8F8F8;
     }
     
-    /* ==== REACCIONES ==== */
     .reacciones {
         margin-top: 15px;
         display: flex;
@@ -279,7 +316,6 @@
         color: #E1306C;
     }
 
-    /* ==== COMENTARIOS ==== */
     .comentarios-container {
         margin-top: 15px;
     }
@@ -298,7 +334,6 @@
     .comentario-info p {
         margin: 0;
         color: inherit;
-        /* Hereda el color de la tarjeta para que se adapte */
     }
 
     .comentario-box {
@@ -319,8 +354,7 @@
         color: #262626;
     }
     
-    .enviar-btn,
-    .eliminar-btn {
+    .enviar-btn, .eliminar-btn {
         background: #E1306C;
         color: #fff;
         border: none;
@@ -331,188 +365,13 @@
         font-size: 16px;
         transition: transform 0.2s;
     }
-    
-    .enviar-btn:hover,
-    .eliminar-btn:hover {
+
+    .enviar-btn:hover, .eliminar-btn:hover {
         transform: scale(1.1);
     }
-    
+
     .eliminar-btn {
         background: #FF4081;
     }
 </style>
-
-<div class="container">
-    <h1 class="titulo">Confesiones Anónimas</h1>
-
-    <button class="btn-floating" id="btn-new-conf">+</button>
-
-    <a href="{{ url_for('inicio') }}" class="btn-futurista rojo" style="position: fixed; bottom: 90px; right: 20px; z-index: 1001;">
-        🏠 Inicio
-    </a>
-
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <span class="close" id="modal-close">&times;</span>
-            <form action="{{ url_for('confesiones') }}" method="POST" enctype="multipart/form-data" id="form-confesion">
-                <textarea name="texto" placeholder="Escribe tu confesión caliente..." required></textarea>
-                <input type="file" name="media" accept="image/*,audio/*">
-                <label>Color de fondo:</label>
-                <input type="color" name="color" value="#FFFFFF">
-                <div class="form-actions">
-                    <button type="button" class="btn-futurista rojo" id="btn-descartar">✖ Descartar</button>
-                    <button type="submit" class="btn-futurista verde">🚀 Publicar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div class="filtros">
-        <button onclick="cargarFiltro('nuevas')" class="btn-futurista btn-filtro">🆕 Nuevas</button>
-        <button onclick="cargarFiltro('populares')" class="btn-futurista btn-filtro">🔥 Populares</button>
-        <button onclick="location.reload()" class="btn-futurista btn-filtro">🔁 Recargar</button>
-        <button onclick="alternarModo()" class="btn-futurista btn-filtro">🌓 Modo</button>
-    </div>
-
-    <div id="contenedor-confesiones">
-        {% for conf in confesiones %}
-            <div class="confesion-card" style="background-color: {{ conf.color if conf.color else '#FFFFFF' }}">
-                <div class="card-header">
-                    <div class="user-info">
-                        <h4 class="user-name">Anónimo</h4>
-                    </div>
-                    <button class="eliminar-btn" onclick="eliminarConfesion('{{ conf.id }}')">
-                        ✖️
-                    </button>
-                </div>
-                <p class="confesion-text">{{ conf.texto }}</p>
-                
-                {% include "confesiones_card.html" %}
-                
-                <div class="reacciones">
-                    <button class="emoji-btn">❤️ <span>0</span></button>
-                    <button class="emoji-btn">🔥 <span>0</span></button>
-                    <button class="emoji-btn">😂 <span>0</span></button>
-                    <button class="emoji-btn">😮 <span>0</span></button>
-                    <button class="emoji-btn">😢 <span>0</span></button>
-                </div>
-                
-                <div class="comentarios-container">
-                    <div class="comentario-item">
-                        <div class="comentario-info">
-                            <p><b>Anónimo</b>: ¡Me identifico mucho con esto!</p>
-                        </div>
-                    </div>
-                    <div class="comentario-item">
-                        <div class="comentario-info">
-                            <p><b>Anónimo</b>: Me parece muy valiente tu confesión.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="comentario-box">
-                    <input type="text" placeholder="Escribe un comentario...">
-                    <button class="enviar-btn">
-                        ➤
-                    </button>
-                </div>
-
-            </div>
-        {% endfor %}
-    </div>
-
-    <div id="loading" style="text-align:center; margin:20px; display:none;">Cargando...</div>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="{{ url_for('static', filename='js/confesiones.js') }}"></script>
-<script>
-    // Lógica para el modal (ocultar y mostrar)
-    var modal = document.getElementById("modal");
-    var btn = document.getElementById("btn-new-conf");
-    var span = document.getElementById("modal-close");
-    var discardBtn = document.getElementById("btn-descartar");
-    
-    btn.onclick = function() {
-        modal.style.display = "block";
-    }
-
-    span.onclick = function() {
-        modal.style.display = "none";
-    }
-
-    discardBtn.onclick = function() {
-        modal.style.display = "none";
-    }
-
-    window.onclick = function(event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
-        }
-    }
-
-    function alternarModo() {
-        document.body.classList.toggle('modo-claro');
-        var isLightMode = document.body.classList.contains('modo-claro');
-        localStorage.setItem('modoClaro', isLightMode);
-
-        const tarjetas = document.querySelectorAll('.confesion-card');
-        tarjetas.forEach(tarjeta => {
-            const originalColor = tarjeta.getAttribute('style');
-            if (isLightMode) {
-                tarjeta.style.color = '#262626';
-            } else {
-                // Esta lógica es para si quieres un modo oscuro
-                // tarjeta.style.color = '#fff';
-            }
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const isLightMode = localStorage.getItem('modoClaro') === 'true';
-        if (isLightMode) {
-            document.body.classList.add('modo-claro');
-        }
-    });
-
-    // Lógica para cargar filtros (Asume que usas jQuery para AJAX)
-    function cargarFiltro(filtro) {
-        $('#contenedor-confesiones').empty();
-        $('#loading').show();
-        $.ajax({
-            url: `{{ url_for('confesiones') }}?filtro=${filtro}`,
-            type: 'GET',
-            success: function(data) {
-                $('#loading').hide();
-                $('#contenedor-confesiones').html($(data).find('#contenedor-confesiones').html());
-            },
-            error: function() {
-                $('#loading').hide();
-                $('#contenedor-confesiones').html('<p style="color:red; text-align:center;">Error al cargar las confesiones.</p>');
-            }
-        });
-    }
-
-    // Nueva función para el botón de eliminar
-    function eliminarConfesion(confesionId) {
-        if (confirm('¿Estás seguro de que quieres eliminar esta confesión?')) {
-            // Aquí debes implementar la llamada a tu API o ruta de Flask para eliminar la confesión
-            alert(`Eliminando la confesión con ID: ${confesionId}`);
-            // Ejemplo de llamada AJAX (necesitas ajustar la URL y el método)
-            /*
-            $.ajax({
-                url: `/eliminar_confesion/${confesionId}`,
-                type: 'POST',
-                success: function(response) {
-                    // Si se elimina correctamente, recarga la página o remueve la tarjeta del DOM
-                    location.reload();
-                },
-                error: function(error) {
-                    alert('No se pudo eliminar la confesión.');
-                }
-            });
-            */
-        }
-    }
-</script>
 {% endblock %}

@@ -22,30 +22,3 @@
         </audio>
     </div>
     {% endif %}
-
-    <div class="reacciones">
-        {% for tipo, cantidad in conf.reacciones.items() %}
-        <button class="emoji-btn" data-conf-id="{{ conf._id }}" data-tipo="{{ tipo }}">
-            {{ tipo }} <span id="reaccion-{{ conf._id }}-{{ tipo }}">{{ cantidad }}</span>
-        </button>
-        {% endfor %}
-    </div>
-
-    <div id="comentarios-{{ conf._id }}" class="comentarios-container">
-        {% for comentario in conf.comentarios %}
-        <div class="comentario-item">
-            <div class="comentario-info">
-                <p><b>{{ comentario.usuario or 'Anónimo' }}:</b> {{ comentario.texto }}</p>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <div class="comentario-box">
-        <input type="text" id="comentario-{{ conf._id }}" placeholder="Escribe un comentario...">
-        <button class="enviar-btn" data-conf-id="{{ conf._id }}" title="Enviar comentario">📩</button>
-        {% if alias == conf.usuario %}
-        <button class="eliminar-btn" data-conf-id="{{ conf._id }}" title="Eliminar confesión">🗑</button>
-        {% endif %}
-    </div>
-</div>
