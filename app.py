@@ -54,14 +54,14 @@ retiros_col = db.retiros
 mensajes_col = db.mensajes
 
 # Configuración de Pusher (Chat)
+
 pusher_client = pusher.Pusher(
     app_id=os.getenv("PUSHER_APP_ID", "2031513"),
-    key=os.getenv("PUSHER_KEY"),
-    secret=os.getenv("PUSHER_SECRET"),
-    cluster=os.getenv("PUSHER_CLUSTER", "us2"),
+    key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
+    secret=os.getenv("PUSHER_SECRET", "84d7288e7578267c3f6e"),
+    cluster=os.getenv("PUSHER_CLUSTER", "mt1"),
     ssl=True
 )
-
 # ---------------------------------------------------------------------------
 # Archivos multimedia
 # ---------------------------------------------------------------------------
