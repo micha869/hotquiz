@@ -50,11 +50,10 @@ comentarios_hot_col = db.comentarios_hot
 comentarios_col = db.comentarios
 donaciones_col = db.donaciones_tokens
 hotreels_col = db.hotreels
-retiros_col = db.retiros 
+retiros_col = db.retiros
 mensajes_col = db.mensajes
 
 # Configuración de Pusher (Chat)
-
 pusher_client = pusher.Pusher(
     app_id=os.getenv("PUSHER_APP_ID", "2031513"),
     key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
@@ -62,6 +61,7 @@ pusher_client = pusher.Pusher(
     cluster=os.getenv("PUSHER_CLUSTER", "mt1"),
     ssl=True
 )
+
 # ---------------------------------------------------------------------------
 # Archivos multimedia
 # ---------------------------------------------------------------------------
@@ -189,7 +189,6 @@ def salir():
 # ---------------------------------------------------------------------------
 # Juego 1 – Foto Hot
 # ---------------------------------------------------------------------------
-
 @app.route("/foto_hot", methods=["GET", "POST"])
 def foto_hot():
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
@@ -205,7 +204,7 @@ def foto_hot():
             flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
             return redirect(url_for("foto_hot"))
 
-        # ¡CORRECCIÓN! Usamos GridFS para guardar el archivo
+        # Guardar el archivo en GridFS
         file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
         ruta_img = str(file_id)
 
@@ -328,7 +327,7 @@ def aceptar_reto():
     header, b64 = imagen_data.split(",", 1)
     ext = header.split(";")[0].split("/")[1]
 
-    # ¡CORRECCIÓN! Subimos a GridFS en lugar de guardar en disco
+    # Subir a GridFS en lugar de guardar en disco
     file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}_rival.{ext}", content_type=f"image/{ext}")
     ruta_img = str(file_id)
 
@@ -354,7 +353,7 @@ def eliminar_foto_hot(reto_id):
         flash("No tienes permiso para eliminar este reto.")
         return redirect(url_for("foto_hot"))
 
-    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
+    # Eliminar de GridFS
     if "player_image" in duelo:
         try:
             fs.delete(ObjectId(duelo["player_image"]))
@@ -364,11 +363,9 @@ def eliminar_foto_hot(reto_id):
     fotos_col.delete_one({"_id": duelo["_id"]})
     flash("Reto eliminado y tokens devueltos.")
     return redirect(url_for("foto_hot"))
-
 # ---------------------------------------------------------------------------
 # Juego 2 – Susurra y Gana (audios sensuales)
 # --------------------------------------------------------------------------
-
 @app.route("/audio_hot", methods=["GET", "POST"])
 def audio_hot():
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
@@ -534,7 +531,7 @@ def audio_hot_eliminar_reto(audio_id):
         flash("Solo puedes eliminar tus propios audios")
         return redirect(url_for("audio_hot"))
 
-    # ¡CORRECCIÓN! Eliminamos de GridFS en lugar del disco local
+    # Eliminamos de GridFS
     if "audio" in pista:
         try:
             fs.delete(ObjectId(pista["audio"]))
@@ -544,7 +541,6 @@ def audio_hot_eliminar_reto(audio_id):
     audios_col.delete_one({"_id": ObjectId(audio_id)})
     flash("Audio eliminado correctamente")
     return redirect(url_for("audio_hot"))
-
 # ---------------------------------------------------------------------------
 # Más rutas (lanzar retos, votar, etc.)
 # ---------------------------------------------------------------------------
@@ -629,7 +625,9 @@ def lanzar():
                            retos=retos, retos_recibidos=retos_recibidos,
                            retos_publicos=retos_publicos,
                            notificaciones=notificaciones,
-                           retos_recibidos_pendientes=retos_recibidos_pendientes)@app.route("/eliminar_reto/<reto_id>", methods=["POST"])
+                           retos_recibidos_pendientes=retos_recibidos_pendientes)
+
+@app.route("/eliminar_reto/<reto_id>", methods=["POST"])
 def eliminar_reto(reto_id):
     alias, tokens_oro, _ = get_user_and_saldo()
     reto = retos_col.find_one({"_id": ObjectId(reto_id)})
@@ -902,8 +900,6 @@ def eliminar_cumplido():
 # ---------------------------------------------------------------------------
 # Juego 4 – HotCopy
 # --------------------------------------------------------------------------
-
-
 def asegurar_reacciones(fotos):
     """Asegura que cada foto tenga reacciones inicializadas"""
     for foto in fotos:
@@ -1426,7 +1422,10 @@ from flask import render_template, redirect, url_for, session, flash, request
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from uuid import uuid4
+from bson.objectid import ObjectId
 import os
+# Se requiere importar GridFSBucket
+from gridfs import GridFSBucket
 
 # Define la carpeta donde se guardarán los comprobantes
 UPLOAD_FOLDER_COMPROBANTES = 'static/comprobantes'
@@ -1436,16 +1435,6 @@ app.config['UPLOAD_FOLDER_COMPROBANTES'] = UPLOAD_FOLDER_COMPROBANTES
 # Comprar tokens (vista básica)
 # ---------------------------------------------------------------------------
 # app.py (fragmento del código)
-
-from flask import render_template, redirect, url_for, session, flash, request
-from werkzeug.utils import secure_filename
-from datetime import datetime
-from uuid import uuid4
-from bson.objectid import ObjectId
-import os
-# Se requiere importar GridFSBucket
-from gridfs import GridFSBucket
-
 
 # Suponiendo que estas variables están definidas en tu archivo principal de la app
 # app = Flask(__name__)
