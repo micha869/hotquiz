@@ -14,16 +14,13 @@ $(document).ready(function() {
     btnNewConf.on("click", function() {
         modal.show();
     });
-
     modalClose.on("click", function() {
         modal.hide();
     });
-
     btnDescartar.on("click", function() {
         formConfesion[0].reset();
         modal.hide();
     });
-
     $(window).on("click", function(event) {
         if ($(event.target).is(modal)) {
             modal.hide();
@@ -55,35 +52,41 @@ $(document).ready(function() {
         });
     });
 
+    // Event delegation para elementos dinámicos
     // Reacciones
-    window.reaccionar = function(id, tipo) {
+    contenedorConfesiones.on("click", ".emoji-btn", function() {
+        const btn = $(this);
+        const confId = btn.data("id");
+        const emojiTipo = btn.data("emoji");
         $.ajax({
-            url: `/reaccion_conf/${id}/${tipo}`,
+            url: `/reaccion_conf/${confId}/${emojiTipo}`,
             type: "POST",
             success: function(response) {
                 if (response.success) {
-                    let btn = $(`#conf-${id} .emoji-btn:contains('${tipo}')`);
                     let span = btn.find("span");
                     let count = parseInt(span.text()) + 1;
                     span.text(count);
                 }
             }
         });
-    };
+    });
 
     // Comentarios
-    window.comentar = function(id) {
-        let input = $(`#input-comentario-${id}`);
-        let texto = input.val().trim();
+    contenedorConfesiones.on("click", ".enviar-btn", function() {
+        const btn = $(this);
+        const confId = btn.data("id");
+        const card = btn.closest(".confesion-card");
+        const input = card.find(".comentario-input");
+        const texto = input.val().trim();
         if (texto === "") return;
         $.ajax({
             url: `/comentar_conf`,
             type: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ id: id, texto: texto }),
+            data: JSON.stringify({ id: confId, texto: texto }),
             success: function(response) {
                 if (response.success) {
-                    let comentariosLista = $(`#comentarios-${id}`);
+                    let comentariosLista = card.find(".comentarios-lista");
                     let nuevoComentario = `
                         <div class="comentario-item">
                             <span class="comentario-usuario">${response.comentario.usuario}:</span>
@@ -93,19 +96,23 @@ $(document).ready(function() {
                     comentariosLista.append(nuevoComentario);
                     input.val("");
                 }
+            },
+            error: function() {
+                alert("Ocurrió un error al comentar.");
             }
         });
-    };
-
+    });
+    
     // Eliminar confesión
-    window.eliminarConfesion = function(id) {
+    contenedorConfesiones.on("click", ".delete-btn", function() {
+        const confId = $(this).data("id");
         if (confirm("¿Estás seguro de que quieres eliminar esta confesión?")) {
             $.ajax({
-                url: `/eliminar_conf/${id}`,
+                url: `/eliminar_conf/${confId}`,
                 type: "POST",
                 success: function(response) {
                     if (response.success) {
-                        $(`#conf-${id}`).fadeOut(500, function() {
+                        $(`#conf-${confId}`).fadeOut(500, function() {
                             $(this).remove();
                         });
                     } else {
@@ -117,10 +124,11 @@ $(document).ready(function() {
                 }
             });
         }
-    };
+    });
 
     // Filtros
-    window.cargarFiltro = function(tipo) {
+    $(".filters").on("click", ".btn-filter", function() {
+        const tipo = $(this).data("filter-type");
         offset = 0;
         contenedorConfesiones.empty();
         loadingMessage.show();
@@ -131,7 +139,7 @@ $(document).ready(function() {
             loadingMessage.hide();
             alert("Error al cargar las confesiones.");
         });
-    };
+    });
 
     // Carga infinita
     function cargarMasConfesiones() {
@@ -152,7 +160,7 @@ $(document).ready(function() {
         }
     });
 
-    // Cargar las confesiones iniciales (si no hay ninguna al cargar la página)
+    // Cargar las confesiones iniciales si no hay ninguna
     if (contenedorConfesiones.children().length === 0) {
         cargarMasConfesiones();
     }
