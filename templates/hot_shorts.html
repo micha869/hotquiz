@@ -207,7 +207,7 @@ let loadingMore = false;
 function createReelHTML(reel) {
     return `
     <div class="reel">
-        <video muted playsinline loop autoplay src="{{ url_for('stream_video', file_id=reel.archivo_id) }}"></video>
+        <video muted playsinline loop autoplay src="/hot_shorts/video/${reel.archivo_id}"></video>
         <div class="reacciones-panel">
             <button onclick="likeReel('${reel._id}', this)">❤ ${reel.likes}</button>
             <button onclick="fireReel('${reel._id}', this)">🔥 ${reel.fuegos}</button>
