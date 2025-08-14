@@ -4,8 +4,8 @@
 {% block content %}
 <div class="juego-container" style="max-width: 700px; margin: auto; color: #fff; text-align: center;">
     <h2 class="titulo-neon" style="margin-bottom: 1rem; color: #ff33cc; text-shadow: 0 0 10px #ff33cc, 0 0 20px #cc00ff;">🎹 Susurra y Gana</h2>
-    <p style="color: #f0f0f0;">💰 Oro: {{ tokens_oro }} | 🥈 Plata: {{ tokens_plata }}</p>
-    <p style="color: #e0e0e0;">Sube un audio sensual y deja que el público vote y reaccione 🔥</p>
+    <p style="color: #141414;">💰 Oro: {{ tokens_oro }} | 🥈 Plata: {{ tokens_plata }}</p>
+    <p style="color: #f70499;">Sube un audio sensual y deja que el público vote y reaccione 🔥</p>
     <a href="{{ url_for('jugar') }}" class="boton-futurista" style="margin-bottom: 1.5rem; background: #9933ff;">🎮 Volver a Juegos</a>
 
     {% with messages = get_flashed_messages() %}
@@ -44,7 +44,7 @@
 
                 {% if pista.audio_id %}
                 <audio controls style="width:100%; margin-top: 0.5rem; background: #333; border-radius: 50px;">
-                    <source src="{{ url_for('serve_media', file_id=pista.audio_id) }}" type="audio/mpeg">
+                    <source src="{{ url_for('serve_media', file_id=pista.audio) }}" type="audio/mpeg">
                     Tu navegador no soporta <code>audio</code>.
                 </audio>
                 {% else %}
