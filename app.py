@@ -1441,6 +1441,39 @@ def comentar_reel(reel_id):
     }
     hotreels_col.update_one({"_id": ObjectId(reel_id)}, {"$push": {"comentarios": comentario}})
     return jsonify(success=True)
+@app.route('/eliminar_shorts/<reel_id>', methods=['POST'])
+def eliminar_shorts(reel_id):
+    alias = session.get("alias")
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión para eliminar videos"), 401
+
+    try:
+        reel_object_id = ObjectId(reel_id)
+        reel = hotreels_col.find_one({"_id": reel_object_id})
+
+        if not reel:
+            return jsonify(success=False, message="Reel no encontrado"), 404
+
+        # Solo puede eliminar el dueño o un administrador
+        if reel.get("usuario") != alias and alias != "admin":
+            return jsonify(success=False, message="No tienes permisos para eliminar este video"), 403
+
+        # Borrar video de GridFS si existe
+        if reel.get("archivo_id"):
+            try:
+                fs.delete(ObjectId(reel["archivo_id"]))
+            except Exception as e:
+                print(f"⚠ No se pudo borrar el archivo de GridFS: {e}")
+
+        # Borrar documento en MongoDB
+        hotreels_col.delete_one({"_id": reel_object_id})
+
+        return jsonify(success=True, message="Video eliminado con éxito")
+    except Exception as e:
+        return jsonify(success=False, message=f"Error al eliminar el video: {e}"), 500
+
+
+    
 # app.py fragmento del código
 # Comprar tokens vista básica
 from flask import render_template, redirect, url_for, session, flash, request

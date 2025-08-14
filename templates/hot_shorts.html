@@ -72,6 +72,7 @@
         display: flex;
         justify-content: space-around;
         margin-top: 10px;
+        flex-wrap: wrap;
     }
     .reacciones-panel button {
         background-color: transparent;
@@ -80,14 +81,14 @@
         font-size: 18px;
         cursor: pointer;
     }
-    .btn-regalar {
-        background: gold;
+    .btn-comentar {
+        background-color: #ff2d75; /* rosa tipo Instagram */
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
         border: none;
-        padding: 8px 12px;
-        border-radius: 8px;
         cursor: pointer;
-        font-weight: bold;
-        margin-top: 10px;
+        margin-left: 6px;
     }
 </style>
 
@@ -108,12 +109,15 @@
 <div class="reel-container" id="reelContainer">
     {% if reels %}
         {% for reel in reels %}
-        <div class="reel">
+        <div class="reel" id="reel-{{ reel._id }}">
             <video muted playsinline loop autoplay src="{{ url_for('stream_video', file_id=reel.archivo_id) }}"></video>
             <div class="reacciones-panel">
                 <button onclick="likeReel('{{ reel._id }}', this)">❤ {{ reel.likes }}</button>
                 <button onclick="fireReel('{{ reel._id }}', this)">🔥 {{ reel.fuegos }}</button>
                 <button onclick="regalarReel('{{ reel._id }}', this)">💰 {{ reel.tokens_recibidos }}</button>
+                {% if reel.usuario == session.get('alias') or session.get('rol') == 'admin' %}
+                <button onclick="deleteReel('{{ reel._id }}')">🗑️ Eliminar</button>
+                {% endif %}
             </div>
             <div>
                 <div id="comentarios-{{ reel._id }}">
@@ -121,7 +125,10 @@
                     <p>💬 {{ c.texto }}</p>
                     {% endfor %}
                 </div>
-                <input type="text" id="comentario-{{ reel._id }}" placeholder="Escribe un comentario..." onkeypress="if(event.key==='Enter'){comentarReel('{{ reel._id }}')}">
+                <div style="display:flex; margin-top:5px;">
+                    <input type="text" id="comentario-{{ reel._id }}" placeholder="Escribe un comentario..." style="flex:1; padding:6px;">
+                    <button class="btn-comentar" onclick="comentarReel('{{ reel._id }}')">Enviar</button>
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -131,7 +138,6 @@
 </div>
 
 <script>
-// --- Funciones de interacción ---
 function likeReel(id, btn) {
     fetch(`/reel/${id}/like`, { method: 'POST' }).then(() => {
         let count = parseInt(btn.innerText.match(/\d+/)[0]) + 1;
@@ -147,25 +153,15 @@ function fireReel(id, btn) {
 }
 
 function regalarReel(reelId, btn) {
-    fetch(`/reel/${reelId}/regalar`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
+    fetch(`/reel/${reelId}/regalar`, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
             let currentTokens = parseInt(btn.innerText.match(/\d+/)[0]);
             btn.innerText = `💰 ${currentTokens + 1}`;
-            alert(data.message);
         } else {
-            alert(data.message || "Ocurrió un error al regalar el token.");
+            alert(data.message);
         }
-    })
-    .catch(error => {
-        console.error("Error al enviar token:", error);
-        alert("Error al regalar el token.");
     });
 }
 
@@ -184,68 +180,26 @@ function comentarReel(id) {
     });
 }
 
-// --- Autoplay con pausa al salir de la pantalla ---
-function observeVideos() {
+function deleteReel(id) {
+    if (!confirm("¿Eliminar este video?")) return;
+    fetch(`/eliminar_shorts/${id}`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`reel-${id}`).remove();
+            alert(data.message);
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
     const videos = document.querySelectorAll("video");
     const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.play().catch(()=>{});
-            } else {
-                entry.target.pause();
-            }
-        });
+        entries.forEach(entry => entry.isIntersecting ? entry.target.play() : entry.target.pause());
     }, { threshold: 0.6 });
-    videos.forEach(video => observer.observe(video));
-}
-
-// --- Scroll infinito ---
-let skipCount = {{ reels|length }};
-const limit = 5;
-let loadingMore = false;
-
-function createReelHTML(reel) {
-    return `
-    <div class="reel">
-        <video muted playsinline loop autoplay src="/hot_shorts/video/${reel.archivo_id}"></video>
-        <div class="reacciones-panel">
-            <button onclick="likeReel('${reel._id}', this)">❤ ${reel.likes}</button>
-            <button onclick="fireReel('${reel._id}', this)">🔥 ${reel.fuegos}</button>
-            <button onclick="regalarReel('${reel._id}', this)">💰 ${reel.tokens_recibidos}</button>
-        </div>
-        <div>
-            <div id="comentarios-${reel._id}">
-                ${(reel.comentarios || []).map(c => `<p>💬 ${c.texto}</p>`).join('')}
-            </div>
-            <input type="text" id="comentario-${reel._id}" placeholder="Escribe un comentario..." onkeypress="if(event.key==='Enter'){comentarReel('${reel._id}')}">
-        </div>
-    </div>`;
-}
-
-function loadMoreReels() {
-    if (loadingMore) return;
-    loadingMore = true;
-    fetch(`/hot_shorts/load_more?skip=${skipCount}&limit=${limit}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.length > 0) {
-                data.forEach(reel => {
-                    document.getElementById('reelContainer').insertAdjacentHTML('beforeend', createReelHTML(reel));
-                });
-                skipCount += data.length;
-                observeVideos();
-                loadingMore = false;
-            }
-        });
-}
-
-window.addEventListener('scroll', () => {
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
-        loadMoreReels();
-    }
+    videos.forEach(v => observer.observe(v));
 });
-
-// Activar al cargar
-document.addEventListener("DOMContentLoaded", observeVideos);
 </script>
 {% endblock %}
