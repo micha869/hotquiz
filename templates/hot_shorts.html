@@ -106,24 +106,28 @@
 </div>
 
 <div class="reel-container" id="reelContainer">
-    {% for reel in reels %}
-    <div class="reel">
-        <video muted playsinline loop autoplay src="{{ url_for('stream_video', file_id=reel.archivo_id) }}"></video>
-        <div class="reacciones-panel">
-            <button onclick="likeReel('{{ reel._id }}', this)">❤ {{ reel.likes }}</button>
-            <button onclick="fireReel('{{ reel._id }}', this)">🔥 {{ reel.fuegos }}</button>
-            <button onclick="regalarReel('{{ reel._id }}', this)">💰 {{ reel.tokens_recibidos }}</button>
-        </div>
-        <div>
-            <div id="comentarios-{{ reel._id }}">
-                {% for c in reel.get('comentarios', []) %}
-                <p>💬 {{ c.texto }}</p>
-                {% endfor %}
+    {% if reels %}
+        {% for reel in reels %}
+        <div class="reel">
+            <video muted playsinline loop autoplay src="{{ url_for('stream_video', file_id=reel.archivo_id) }}"></video>
+            <div class="reacciones-panel">
+                <button onclick="likeReel('{{ reel._id }}', this)">❤ {{ reel.likes }}</button>
+                <button onclick="fireReel('{{ reel._id }}', this)">🔥 {{ reel.fuegos }}</button>
+                <button onclick="regalarReel('{{ reel._id }}', this)">💰 {{ reel.tokens_recibidos }}</button>
             </div>
-            <input type="text" id="comentario-{{ reel._id }}" placeholder="Escribe un comentario..." onkeypress="if(event.key==='Enter'){comentarReel('{{ reel._id }}')}">
+            <div>
+                <div id="comentarios-{{ reel._id }}">
+                    {% for c in reel.get('comentarios', []) %}
+                    <p>💬 {{ c.texto }}</p>
+                    {% endfor %}
+                </div>
+                <input type="text" id="comentario-{{ reel._id }}" placeholder="Escribe un comentario..." onkeypress="if(event.key==='Enter'){comentarReel('{{ reel._id }}')}">
+            </div>
         </div>
-    </div>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p>No hay videos disponibles. ¡Sube el primero!</p>
+    {% endif %}
 </div>
 
 <script>
