@@ -1441,7 +1441,6 @@ def comentar_reel(reel_id):
     }
     hotreels_col.update_one({"_id": ObjectId(reel_id)}, {"$push": {"comentarios": comentario}})
     return jsonify(success=True)
-
 # app.py fragmento del código
 # Comprar tokens vista básica
 from flask import render_template, redirect, url_for, session, flash, request
