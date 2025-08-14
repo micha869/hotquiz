@@ -1318,17 +1318,6 @@ import os
 import certifi
 from io import BytesIO
 
-# Suponiendo que estas variables están definidas en tu archivo principal de la app
-# app = Flask(__name__)
-# app.secret_key = os.getenv("SECRET_KEY", "clave_secreta_hotquiz")
-# MONGO_URI = os.getenv("MONGO_URI", "...")
-# client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-# db = client.hotquiz
-# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
-# hotreels_col = db.hotreels
-# usuarios_col = db.users
-# donaciones_col = db.donaciones
-
 
 def get_user_and_saldo():
     alias = session.get("alias")
@@ -1452,8 +1441,8 @@ def comentar_reel(reel_id):
     }
     hotreels_col.update_one({"_id": ObjectId(reel_id)}, {"$push": {"comentarios": comentario}})
     return jsonify(success=True)
-# app.py (fragmento del código)
-# Comprar tokens (vista básica)
+# app.py (fragmento del código
+# Comprar tokens vista básica
 from flask import render_template, redirect, url_for, session, flash, request
 from werkzeug.utils import secure_filename
 from datetime import datetime
