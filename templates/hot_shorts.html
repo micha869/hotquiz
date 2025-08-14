@@ -89,7 +89,6 @@
         font-weight: bold;
         margin-top: 10px;
     }
-
 </style>
 
 <button class="upload-btn" onclick="document.getElementById('uploadModal').style.display='block'">＋</button>
@@ -109,7 +108,7 @@
 <div class="reel-container" id="reelContainer">
     {% for reel in reels %}
     <div class="reel">
-        <video muted playsinline loop autoplay src="{{ url_for('serve_media', file_id=reel.archivo) }}"></video>
+        <video muted playsinline loop autoplay src="{{ url_for('stream_video', file_id=reel.archivo_id) }}"></video>
         <div class="reacciones-panel">
             <button onclick="likeReel('{{ reel._id }}', this)">❤ {{ reel.likes }}</button>
             <button onclick="fireReel('{{ reel._id }}', this)">🔥 {{ reel.fuegos }}</button>
@@ -204,7 +203,7 @@ let loadingMore = false;
 function createReelHTML(reel) {
     return `
     <div class="reel">
-        <video muted playsinline loop autoplay src="/serve_media/${reel.archivo}"></video>
+        <video muted playsinline loop autoplay src="{{ url_for('stream_video', file_id=reel.archivo_id) }}"></video>
         <div class="reacciones-panel">
             <button onclick="likeReel('${reel._id}', this)">❤ ${reel.likes}</button>
             <button onclick="fireReel('${reel._id}', this)">🔥 ${reel.fuegos}</button>

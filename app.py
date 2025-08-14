@@ -738,6 +738,41 @@ def reclamar_victoria(reto_id):
     flash("🎉 ¡Felicidades! Has reclamado tu victoria. ¡Disfruta tus tokens!", "success")
     return redirect(url_for("lanzar"))
 # ---------------------------------------------------------------------------
+import os
+import time
+import hashlib
+import uuid
+import re
+from flask import Flask, render_template, session, redirect, url_for, flash, request, send_file, abort
+from werkzeug.utils import secure_filename
+from pymongo import MongoClient
+from collections import Counter
+from bson.objectid import ObjectId
+import pusher
+from dotenv import load_dotenv
+from gridfs import GridFSBucket, NoFile
+from io import BytesIO
+from random import choice  # <--- Esta es la línea que faltaba
+import base64
+
+# Suponiendo que estas variables están definidas en tu app principal
+# app = Flask(__name__)
+# usuarios_col = db.usuarios
+# confesiones_col = db.confesiones
+# mensajes_col = db.mensajes
+# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
+
+ALLOWED_AVATAR = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_CHAT = {'png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'ogg', 'm4a'}
+ALLOWED_IMAGE = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+# Asumo que esta función existe en otro lugar de tu código
+# def get_user_and_saldo():
+#     ...
+
 @app.route("/hot_roulette")
 def hot_roulette():
     alias, _, _ = get_user_and_saldo()
@@ -862,7 +897,7 @@ def cumplir_reto():
             return jsonify(success=False, message="Formato de imagen no permitido"), 400
         
         # ¡CORRECCIÓN! Usamos GridFS para guardar la imagen
-        file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}.{ext}", content_type=f"image/{ext}")
+        file_id = fs.put(base64.b64decode(b64), filename=f"{uuid.uuid4().hex}.{ext}", content_type=f"image/{ext}")
         ruta_relativa = str(file_id)
 
         publicaciones_col.update_one(
@@ -886,7 +921,8 @@ def eliminar_cumplido():
     reto_id = data.get("retoId")
     if not reto_id:
         return jsonify(success=False, message="ID del reto no proporcionado"), 400
-    publicacion = publicaciones_col.find_
+    publicacion = publicaciones_col.find_one({"_id": ObjectId(reto_id)})
+    # ... el resto del código parece estar incompleto aquí
 # ---------------------------------------------------------------------------
 # Más rutas (lanzar retos, votar, etc.)
 # ---------------------------------------------------------------------------
@@ -1319,7 +1355,7 @@ def hot_shorts():
             flash("No se envió archivo.", "error")
             return redirect(url_for('hot_shorts'))
         
-        # 💡 Corrección: Guardamos el archivo directamente en GridFS
+        # Guardamos el archivo directamente en GridFS
         file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
         
         reel = {
