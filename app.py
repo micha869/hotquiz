@@ -189,6 +189,46 @@ def salir():
 # ---------------------------------------------------------------------------
 # Juego 1 – Foto Hot
 # ---------------------------------------------------------------------------
+from datetime import datetime, timedelta
+from flask import request, redirect, url_for, render_template, flash, jsonify
+from bson import ObjectId
+from werkzeug.utils import secure_filename
+import base64
+from uuid import uuid4
+
+# Asegúrate de que 'app', 'fs', 'fotos_col', 'usuarios_col', etc. estén definidos
+# y que las importaciones de Flask, ObjectId y datetime sean correctas.
+
+# ... (otras rutas y funciones de tu app) ...
+
+# Nueva función para eliminar duelos antiguos
+def delete_old_duels():
+    """Elimina duelos con más de 7 días de antigüedad y sus imágenes asociadas."""
+    try:
+        limite_fecha = datetime.now() - timedelta(days=7)
+        duelos_viejos = list(fotos_col.find({"fecha": {"$lt": limite_fecha}}))
+
+        for duelo in duelos_viejos:
+            # Elimina las imágenes de GridFS
+            if "player_image" in duelo and duelo["player_image"]:
+                try:
+                    fs.delete(ObjectId(duelo["player_image"]))
+                except Exception as e:
+                    print(f"Error al eliminar imagen de player de GridFS: {e}")
+
+            if "rival_image" in duelo and duelo["rival_image"]:
+                try:
+                    fs.delete(ObjectId(duelo["rival_image"]))
+                except Exception as e:
+                    print(f"Error al eliminar imagen de rival de GridFS: {e}")
+
+        # Elimina los documentos del duelo de la base de datos
+        fotos_col.delete_many({"fecha": {"$lt": limite_fecha}})
+        print(f"Se eliminaron {len(duelos_viejos)} duelos antiguos.")
+    except Exception as e:
+        print(f"Error en la tarea de eliminar duelos antiguos: {e}")
+
+# Rutas para el juego
 @app.route("/foto_hot", methods=["GET", "POST"])
 def foto_hot():
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
@@ -204,7 +244,6 @@ def foto_hot():
             flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
             return redirect(url_for("foto_hot"))
 
-        # Guardar el archivo en GridFS
         file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
         ruta_img = str(file_id)
 
@@ -224,10 +263,17 @@ def foto_hot():
             else:
                 flash("Ya subiste una foto para este duelo.")
                 return redirect(url_for("foto_hot"))
-
+            
+            # Devolver token de plata usado
+            usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": 1}})
             fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
             flash("Foto subida al duelo 🔥")
         else:
+            if tokens_plata < 1:
+                flash("No tienes suficientes tokens de plata para crear un reto.")
+                return redirect(url_for("foto_hot"))
+
+            usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
             fotos_col.insert_one({
                 "player": alias,
                 "player_image": ruta_img,
@@ -246,96 +292,25 @@ def foto_hot():
 
         return redirect(url_for("foto_hot"))
 
-    duelos = list(fotos_col.find({"estado": "pendiente"}))
+    # En la primera carga, solo muestra la primera página
+    duelos = list(fotos_col.find({"estado": "pendiente"}).sort("fecha", -1).limit(10))
     return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
 
 
-@app.route("/votar_duelo", methods=["POST"])
-def votar_duelo():
-    alias, tokens_oro, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
+@app.route("/foto_hot_paginated/<int:page>")
+def foto_hot_paginated(page):
+    """API para el scroll infinito."""
+    page_size = 10
+    skip_amount = (page - 1) * page_size
+    duelos = list(fotos_col.find({"estado": "pendiente"}).sort("fecha", -1).skip(skip_amount).limit(page_size))
+    
+    html_duelos = ""
+    for d in duelos:
+        html_duelos += render_template("_duelo_card.html", d=d, alias=session.get("alias"))
+    
+    return jsonify({"html": html_duelos, "has_more": len(duelos) == page_size})
 
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    lado = data.get("lado")
-    if lado not in ["player", "rival"]:
-        return jsonify(success=False, message="Lado inválido"), 400
-
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
-    if not duelo:
-        return jsonify(success=False, message="Duelo no encontrado"), 404
-
-    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
-        return jsonify(success=False, message="Ya votaste"), 403
-
-    if tokens_oro < 1:
-        return jsonify(success=False, message="Tokens oro insuficientes"), 403
-
-    usuarios_col.update_one(
-        {"alias": alias, "tokens_oro": {"$gte": 1}},
-        {"$inc": {"tokens_oro": -1}}
-    )
-
-    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
-    usuarios_col.update_one(
-        {"alias": ganador_alias},
-        {"$inc": {"tokens_oro": 1}}
-    )
-
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {
-            "$inc": {f"{lado}_votes": 1},
-            "$push": {"votantes": {"usuario": alias, "lado": lado, "fecha": datetime.now()}}
-        }
-    )
-    return jsonify(success=True, message="Voto registrado y token transferido")
-
-@app.route("/comentario_duelo", methods=["POST"])
-def comentario_duelo():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión"), 401
-
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    texto = data.get("texto", "").strip()
-    if not duelo_id or not texto:
-        return jsonify(success=False, message="Comentario inválido"), 400
-
-    comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
-    fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
-    return jsonify(success=True)
-
-@app.route("/aceptar_reto", methods=["POST"])
-def aceptar_reto():
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Inicia sesión"), 401
-
-    data = request.get_json()
-    duelo_id = data.get("dueloId")
-    imagen_data = data.get("imagen")
-    if not duelo_id or not imagen_data:
-        return jsonify(success=False, message="Faltan datos"), 400
-
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
-    if not duelo or duelo.get("rival"):
-        return jsonify(success=False, message="Reto no disponible"), 403
-
-    header, b64 = imagen_data.split(",", 1)
-    ext = header.split(";")[0].split("/")[1]
-
-    # Subir a GridFS en lugar de guardar en disco
-    file_id = fs.put(base64.b64decode(b64), filename=f"{uuid4().hex}_rival.{ext}", content_type=f"image/{ext}")
-    ruta_img = str(file_id)
-
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {"$set": {"rival": alias, "rival_image": ruta_img, "rival_votes": 0, "rival_tokens": 0}}
-    )
-    return jsonify(success=True)
+# ... (otras rutas como votar_duelo, comentario_duelo, etc.) ...
 
 @app.route("/eliminar_foto_hot/<reto_id>", methods=["POST"])
 def eliminar_foto_hot(reto_id):
@@ -353,6 +328,9 @@ def eliminar_foto_hot(reto_id):
         flash("No tienes permiso para eliminar este reto.")
         return redirect(url_for("foto_hot"))
 
+    # Devolver el token de plata al usuario
+    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": 1}})
+
     # Eliminar de GridFS
     if "player_image" in duelo:
         try:
@@ -366,6 +344,14 @@ def eliminar_foto_hot(reto_id):
 # ---------------------------------------------------------------------------
 # Juego 2 – Susurra y Gana (audios sensuales)
 # --------------------------------------------------------------------------
+from bson.objectid import ObjectId
+from flask import send_file
+# Asegúrate de que 'fs' y 'app' estén definidos en tu código principal
+from bson.objectid import ObjectId
+from flask import send_file
+
+# Asegúrate de que 'fs' y 'app' estén definidos en tu código principal
+
 @app.route("/audio_hot", methods=["GET", "POST"])
 def audio_hot():
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
