@@ -52,12 +52,11 @@ $(document).ready(function() {
         });
     });
 
-    // Event delegation para elementos dinámicos
     // Reacciones
     contenedorConfesiones.on("click", ".emoji-btn", function() {
         const btn = $(this);
         const confId = btn.closest(".confesion-card").attr("id").replace("conf-", "");
-        const emojiTipo = btn.text().trim().split(" ")[0]; // Obtiene el emoji del texto del botón
+        const emojiTipo = btn.text().trim().split(" ")[0];
         $.ajax({
             url: `/reaccion_conf/${confId}/${emojiTipo}`,
             type: "POST",
@@ -69,49 +68,45 @@ $(document).ready(function() {
                 }
             },
             error: function() {
-                alert("Ocurrió un error al reaccionar. Por favor, inténtalo de nuevo.");
+                alert("Ocurrió un error al reaccionar.");
             }
         });
     });
 
-    // Comentarios
-    contenedorConfesiones.on("click", ".enviar-btn", function() {
-        const btn = $(this);
-        const confId = btn.closest(".confesion-card").attr("id").replace("conf-", "");
+    // Comentarios (fix click en SVG y evitar undefined)
+    contenedorConfesiones.on("click", ".enviar-btn, .enviar-btn *", function(e) {
+        e.preventDefault();
+        const btn = $(this).closest(".enviar-btn"); // asegura que sea el botón
         const card = btn.closest(".confesion-card");
         const input = card.find(".comentario-input");
-        const texto = input.val().trim();
-        if (texto === "") {
-            return;
-        }
+        const texto = (input.val() || "").trim(); // previene undefined
+
+        if (!texto) return;
 
         $.ajax({
             url: `/comentar_conf`,
             type: "POST",
             contentType: "application/json",
-            data: JSON.stringify({ id: confId, texto: texto }),
+            data: JSON.stringify({ id: card.attr("id").replace("conf-", ""), texto: texto }),
             success: function(response) {
                 if (response.success) {
-                    let comentariosLista = card.find(".comentarios-lista");
-                    let nuevoComentario = `
+                    card.find(".comentarios-lista").append(`
                         <div class="comentario-item">
                             <span class="comentario-usuario">${response.comentario.usuario}:</span>
                             <span class="comentario-texto">${response.comentario.texto}</span>
                         </div>
-                    `;
-                    comentariosLista.append(nuevoComentario);
+                    `);
                     input.val("");
                 } else {
-                    alert(response.message || "Error al comentar. Inténtalo de nuevo.");
+                    alert(response.message || "Error al comentar.");
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.log(jqXHR);
-                alert("Ocurrió un error al comentar. Por favor, revisa la consola del navegador para más detalles.");
+            error: function() {
+                alert("Ocurrió un error al comentar.");
             }
         });
     });
-    
+
     // Eliminar confesión
     contenedorConfesiones.on("click", ".delete-btn", function() {
         const confId = $(this).closest(".confesion-card").attr("id").replace("conf-", "");
