@@ -56,8 +56,8 @@ $(document).ready(function() {
     // Reacciones
     contenedorConfesiones.on("click", ".emoji-btn", function() {
         const btn = $(this);
-        const confId = btn.data("id");
-        const emojiTipo = btn.data("emoji");
+        const confId = btn.closest(".confesion-card").attr("id").replace("conf-", "");
+        const emojiTipo = btn.text().trim().split(" ")[0]; // Obtiene el emoji del texto del botón
         $.ajax({
             url: `/reaccion_conf/${confId}/${emojiTipo}`,
             type: "POST",
@@ -67,6 +67,9 @@ $(document).ready(function() {
                     let count = parseInt(span.text()) + 1;
                     span.text(count);
                 }
+            },
+            error: function() {
+                alert("Ocurrió un error al reaccionar. Por favor, inténtalo de nuevo.");
             }
         });
     });
@@ -74,11 +77,14 @@ $(document).ready(function() {
     // Comentarios
     contenedorConfesiones.on("click", ".enviar-btn", function() {
         const btn = $(this);
-        const confId = btn.data("id");
+        const confId = btn.closest(".confesion-card").attr("id").replace("conf-", "");
         const card = btn.closest(".confesion-card");
         const input = card.find(".comentario-input");
         const texto = input.val().trim();
-        if (texto === "") return;
+        if (texto === "") {
+            return;
+        }
+
         $.ajax({
             url: `/comentar_conf`,
             type: "POST",
@@ -95,17 +101,20 @@ $(document).ready(function() {
                     `;
                     comentariosLista.append(nuevoComentario);
                     input.val("");
+                } else {
+                    alert(response.message || "Error al comentar. Inténtalo de nuevo.");
                 }
             },
-            error: function() {
-                alert("Ocurrió un error al comentar.");
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.log(jqXHR);
+                alert("Ocurrió un error al comentar. Por favor, revisa la consola del navegador para más detalles.");
             }
         });
     });
     
     // Eliminar confesión
     contenedorConfesiones.on("click", ".delete-btn", function() {
-        const confId = $(this).data("id");
+        const confId = $(this).closest(".confesion-card").attr("id").replace("conf-", "");
         if (confirm("¿Estás seguro de que quieres eliminar esta confesión?")) {
             $.ajax({
                 url: `/eliminar_conf/${confId}`,
@@ -128,7 +137,7 @@ $(document).ready(function() {
 
     // Filtros
     $(".filters").on("click", ".btn-filter", function() {
-        const tipo = $(this).data("filter-type");
+        const tipo = $(this).text().trim().split(" ")[1].toLowerCase();
         offset = 0;
         contenedorConfesiones.empty();
         loadingMessage.show();
