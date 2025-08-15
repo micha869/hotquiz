@@ -350,15 +350,6 @@ from flask import send_file
 from bson.objectid import ObjectId
 from flask import send_file
 
-# Asegúrate de que 'fs' y 'app' estén definidos en tu código principal
-@app.route('/media/<file_id>')
-def serve_media(file_id):
-    try:
-        file = fs.get(ObjectId(file_id))
-        return send_file(BytesIO(file.read()), mimetype=file.content_type, as_attachment=False)
-    except NoFile:
-        return abort(404)
-
 @app.route("/audio_hot", methods=["GET", "POST"])
 def audio_hot():
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
