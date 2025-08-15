@@ -351,6 +351,13 @@ from bson.objectid import ObjectId
 from flask import send_file
 
 # Asegúrate de que 'fs' y 'app' estén definidos en tu código principal
+@app.route('/media/<file_id>')
+def serve_media(file_id):
+    try:
+        file = fs.get(ObjectId(file_id))
+        return send_file(BytesIO(file.read()), mimetype=file.content_type, as_attachment=False)
+    except NoFile:
+        return abort(404)
 
 @app.route("/audio_hot", methods=["GET", "POST"])
 def audio_hot():
@@ -1231,22 +1238,48 @@ def reaccion_conf(id, tipo):
     confesiones_col.update_one({"_id": ObjectId(id)}, {"$inc": {f"reacciones.{tipo}": 1}})
     return jsonify(success=True)
 
-@app.route("/comentar_conf", methods=["POST"])
+
+@app.route('/comentar_conf', methods=['POST'])
 def comentar_conf():
+    # 1. Recibe los datos JSON
     data = request.get_json()
-    conf_id = data.get("id")
-    texto = data.get("texto")
-    alias = get_user()
-    if not conf_id or not texto:
-        return jsonify(success=False)
-    comentario = {
-        "usuario": alias,
+    conf_id_str = data.get('id')
+    texto = data.get('texto')
+    
+    # Valida que los datos existan
+    if not conf_id_str or not texto:
+        return jsonify({"success": False, "message": "Datos incompletos."})
+
+    # 2. Intenta convertir el ID a un ObjectId
+    try:
+        conf_id = ObjectId(conf_id_str)
+    except:
+        return jsonify({"success": False, "message": "ID de confesión inválido."})
+        
+    # Crea el nuevo comentario
+    nuevo_comentario = {
+        "usuario": session.get('alias', 'Anónimo'),
         "texto": texto,
-        "fecha": datetime.now()
+        "fecha": datetime.utcnow()
     }
-    confesiones_col.update_one({"_id": ObjectId(conf_id)}, {"$push": {"comentarios": comentario}})
-    comentario["fecha"] = comentario["fecha"].isoformat()
-    return jsonify(success=True, comentario=comentario)
+
+    # 3. Actualiza la base de datos
+    resultado = confesiones_collection.update_one(
+        {"_id": conf_id},
+        {"$push": {"comentarios": nuevo_comentario}}
+    )
+
+    if resultado.modified_count == 1:
+        # La actualización fue exitosa
+        # Debes devolver el comentario que se agregó para que el JS pueda mostrarlo
+        # (Sin el campo 'fecha' que JS no necesita)
+        return jsonify({"success": True, "comentario": {
+            "usuario": nuevo_comentario["usuario"],
+            "texto": nuevo_comentario["texto"]
+        }})
+    else:
+        # La confesión no se encontró
+        return jsonify({"success": False, "message": "No se encontró la confesión para comentar."})
 
 @app.route("/eliminar_conf/<id>", methods=["POST"])
 def eliminar_conf(id):
