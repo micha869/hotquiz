@@ -73,14 +73,19 @@ $(document).ready(function() {
         });
     });
 
-    // Comentarios (fix click en SVG y evitar undefined)
+    // Comentarios (fix click en SVG + null check)
     contenedorConfesiones.on("click", ".enviar-btn, .enviar-btn *", function(e) {
         e.preventDefault();
-        const btn = $(this).closest(".enviar-btn"); // asegura que sea el botón
+        const btn = $(this).closest(".enviar-btn");
         const card = btn.closest(".confesion-card");
         const input = card.find(".comentario-input");
-        const texto = (input.val() || "").trim(); // previene undefined
 
+        if (input.length === 0) {
+            console.error("No se encontró el campo de comentario.");
+            return;
+        }
+
+        const texto = (input.val() || "").trim();
         if (!texto) return;
 
         $.ajax({
