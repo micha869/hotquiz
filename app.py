@@ -1233,35 +1233,36 @@ def reaccion_conf(id, tipo):
 def comentar_conf():
     data = request.get_json()
     conf_id_str = data.get('id')
-    texto = data.get('texto')
+    texto = data.get('texto', '').strip()
 
     if not conf_id_str or not texto:
-        return jsonify({"success": False, "message": "Datos incompletos."})
+        return jsonify(success=False, message="Datos incompletos.")
 
     try:
-        # Esto es crucial: convertir la cadena a ObjectId
         conf_id = ObjectId(conf_id_str)
     except:
-        return jsonify({"success": False, "message": "ID de confesión inválido."})
-        
+        return jsonify(success=False, message="ID inválido.")
+
     nuevo_comentario = {
         "usuario": session.get('alias', 'Anónimo'),
         "texto": texto,
         "fecha": datetime.utcnow()
     }
 
-    resultado = confesiones_collection.update_one(
+    # Usar la colección correcta
+    resultado = confesiones_col.update_one(
         {"_id": conf_id},
         {"$push": {"comentarios": nuevo_comentario}}
     )
 
-    if resultado.modified_count == 1:
-        return jsonify({"success": True, "comentario": {
+    if resultado.modified_count > 0:
+        return jsonify(success=True, comentario={
             "usuario": nuevo_comentario["usuario"],
             "texto": nuevo_comentario["texto"]
-        }})
+        })
     else:
-        return jsonify({"success": False, "message": "No se encontró la confesión para comentar."})
+        return jsonify(success=False, message="No se encontró la confesión.")
+
 
 
 @app.route("/eliminar_conf/<id>", methods=["POST"])
