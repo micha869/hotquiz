@@ -11,13 +11,9 @@ $(document).ready(function() {
     const loadingMessage = $("#loading");
 
     // Modal
-    btnNewConf.on("click", function() {
-        modal.show();
-    });
-    modalClose.on("click", function() {
-        modal.hide();
-    });
-    btnDescartar.on("click", function() {
+    btnNewConf.on("click", () => modal.show());
+    modalClose.on("click", () => modal.hide());
+    btnDescartar.on("click", () => {
         formConfesion[0].reset();
         modal.hide();
     });
@@ -46,18 +42,20 @@ $(document).ready(function() {
                     alert(response.message);
                 }
             },
-            error: function() {
-                alert("Ocurrió un error al publicar la confesión.");
-            }
+            error: () => alert("Ocurrió un error al publicar la confesión.")
         });
     });
 
-    // Event delegation para elementos dinámicos
+    // Delegación de eventos para elementos dinámicos
+    // Esto es más eficiente y funciona para el scroll infinito.
+    
     // Reacciones
-    contenedorConfesiones.on("click", ".emoji-btn", function() {
+    $(document).on("click", ".emoji-btn", function() {
         const btn = $(this);
-        const confId = btn.data("id");
-        const emojiTipo = btn.data("emoji");
+        const confId = btn.closest(".confesion-card").attr("id").replace("conf-", "");
+        // Se corrige para obtener el emoji del texto del botón.
+        const emojiTipo = btn.text().trim().split(" ")[0]; 
+        
         $.ajax({
             url: `/reaccion_conf/${confId}/${emojiTipo}`,
             type: "POST",
@@ -71,14 +69,21 @@ $(document).ready(function() {
         });
     });
 
-    // Comentarios
-    contenedorConfesiones.on("click", ".enviar-btn", function() {
+    // Comentarios (CORREGIDO)
+    $(document).on("click", ".enviar-btn", function() {
         const btn = $(this);
-        const confId = btn.data("id");
         const card = btn.closest(".confesion-card");
+        const confId = card.attr("id").replace("conf-", "");
         const input = card.find(".comentario-input");
         const texto = input.val().trim();
-        if (texto === "") return;
+
+        if (texto === "") {
+            return;
+        }
+
+        // Deshabilitar botón para evitar múltiples clics
+        btn.prop('disabled', true);
+
         $.ajax({
             url: `/comentar_conf`,
             type: "POST",
@@ -94,18 +99,19 @@ $(document).ready(function() {
                         </div>
                     `;
                     comentariosLista.append(nuevoComentario);
-                    input.val("");
+                    input.val(""); // Limpiar el campo de texto
+                } else {
+                    alert(response.message || "Error al comentar.");
                 }
             },
-            error: function() {
-                alert("Ocurrió un error al comentar.");
-            }
+            error: () => alert("Ocurrió un error al comentar."),
+            complete: () => btn.prop('disabled', false) // Habilitar el botón al finalizar
         });
     });
     
     // Eliminar confesión
-    contenedorConfesiones.on("click", ".delete-btn", function() {
-        const confId = $(this).data("id");
+    $(document).on("click", ".delete-btn", function() {
+        const confId = $(this).closest(".confesion-card").attr("id").replace("conf-", "");
         if (confirm("¿Estás seguro de que quieres eliminar esta confesión?")) {
             $.ajax({
                 url: `/eliminar_conf/${confId}`,
@@ -119,9 +125,7 @@ $(document).ready(function() {
                         alert(response.message);
                     }
                 },
-                error: function() {
-                    alert("No tienes permiso para eliminar esta confesión.");
-                }
+                error: () => alert("No tienes permiso para eliminar esta confesión.")
             });
         }
     });
@@ -135,7 +139,7 @@ $(document).ready(function() {
         $.get(`/confesiones/filtro/${tipo}`, function(data) {
             contenedorConfesiones.html(data.html);
             loadingMessage.hide();
-        }).fail(function() {
+        }).fail(() => {
             loadingMessage.hide();
             alert("Error al cargar las confesiones.");
         });
