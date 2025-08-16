@@ -1,6 +1,6 @@
 <div class="confesion-card" id="conf-{{ conf._id }}" 
       style="background: {{ conf.color or '#ffffff' }}; 
-             color: {{ '#262626' if (conf.color == '#ffffff' or not conf.color) else '#ffffff' }}">
+            color: {{ '#262626' if (conf.color == '#ffffff' or not conf.color) else '#ffffff' }}">
     
     <div class="card-header">
         <div class="user-info">
@@ -24,14 +24,14 @@
 
     {% if conf.imagen %}
     <div class="conf-media-container">
-        <img class="conf-image" src="{{ url_for('serve_media', file_id=conf.imagen) }}" alt="Imagen de la confesión">
+        <img class="conf-image" src="{{ url_for('media', file_id=conf.imagen) }}" alt="Imagen de la confesión">
     </div>
     {% endif %}
 
     {% if conf.audio %}
     <div class="conf-media-container">
         <audio controls class="audio-player" preload="none">
-            <source src="{{ url_for('serve_media', file_id=conf.audio) }}" type="audio/{{ conf.audio.rsplit('.', 1)[1].lower() }}">
+            <source src="{{ url_for('media', file_id=conf.audio) }}" type="audio/mpeg">
             Tu navegador no soporta el elemento de audio.
         </audio>
     </div>
