@@ -1,8 +1,7 @@
 <div class="confesion-card" id="conf-{{ conf._id }}" 
-     style="background: {{ conf.color or '#ffffff' }}; 
-            color: {{ '#262626' if (conf.color == '#ffffff' or not conf.color) else '#ffffff' }}">
+      style="background: {{ conf.color or '#ffffff' }}; 
+             color: {{ '#262626' if (conf.color == '#ffffff' or not conf.color) else '#ffffff' }}">
     
-    <!-- Cabecera -->
     <div class="card-header">
         <div class="user-info">
             <h5 class="user-name">{{ conf.usuario or 'Anónimo' }}</h5>
@@ -21,17 +20,14 @@
         {% endif %}
     </div>
 
-    <!-- Texto de confesión -->
     <p class="confesion-text">{{ conf.texto }}</p>
 
-    <!-- Imagen -->
     {% if conf.imagen %}
     <div class="conf-media-container">
         <img class="conf-image" src="{{ url_for('serve_media', file_id=conf.imagen) }}" alt="Imagen de la confesión">
     </div>
     {% endif %}
 
-    <!-- Audio -->
     {% if conf.audio %}
     <div class="conf-media-container">
         <audio controls class="audio-player" preload="none">
@@ -41,7 +37,6 @@
     </div>
     {% endif %}
 
-    <!-- Reacciones -->
     <div class="card-actions">
         <div class="reacciones">
             {% for emoji, count in conf.reacciones.items() %}
@@ -50,7 +45,6 @@
         </div>
     </div>
 
-    <!-- Comentarios -->
     <div class="comentarios-container">
         <div class="comentarios-lista" id="comentarios-{{ conf._id }}">
             {% for c in conf.comentarios %}
@@ -60,64 +54,12 @@
             </div>
             {% endfor %}
         </div>
+        
         <div class="comentario-box">
-            <input type="text" placeholder="Añade un comentario..." 
-                   id="input-comentario-{{ conf._id }}" 
-                   class="comentario-input">
-            <button class="enviar-btn" data-id="{{ conf._id }}" title="Enviar comentario">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                     class="feather feather-send">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+            <input type="text" placeholder="Añade un comentario..." class="comentario-input">
+            <button class="enviar-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
         </div>
     </div>
 </div>
-
-<style>
-.confesion-card {
-    position: relative; padding: 20px; margin: 20px auto;
-    border-radius: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    overflow-wrap: break-word; border: 1px solid #DBDBDB;
-}
-.card-header {
-    display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;
-}
-.user-info { display: flex; flex-direction: column; }
-.user-name { margin: 0; font-weight: bold; color: #E1306C; }
-.timestamp { font-size: 0.8em; color: #aaa; }
-.delete-btn {
-    background: none; border: none; color: #FF4081; cursor: pointer; transition: transform 0.2s ease;
-}
-.delete-btn:hover { transform: scale(1.1); color: #C13584; }
-.confesion-text { margin-top: 15px; white-space: pre-wrap; text-align: justify; padding: 0 5px; }
-.conf-media-container { text-align: center; margin-top: 15px; }
-.conf-image { max-width: 100%; max-height: 400px; border-radius: 10px; object-fit: contain; border: 1px solid #DBDBDB; }
-.audio-player audio { width: 100%; border-radius: 50px; outline: none; }
-.reacciones { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 15px; }
-.emoji-btn {
-    background: #EFEFEF; border: none; padding: 8px 12px; border-radius: 20px;
-    cursor: pointer; font-size: 16px; color: #262626; transition: 0.2s;
-}
-.emoji-btn:hover { background: #E1306C; color: white; transform: scale(1.1); }
-.emoji-btn span { margin-left: 5px; font-size: 0.9em; color: #E1306C; }
-.comentarios-container { margin-top: 15px; border-top: 1px solid #DBDBDB; padding-top: 15px; }
-.comentarios-lista { max-height: 200px; overflow-y: auto; margin-bottom: 10px; }
-.comentario-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; }
-.comentario-usuario { font-weight: bold; color: #E1306C; }
-.comentario-box { display: flex; align-items: center; margin-top: 10px; gap: 8px; }
-.comentario-box input {
-    flex-grow: 1; padding: 8px 12px; border-radius: 25px; border: 1px solid #DBDBDB;
-    outline: none; font-size: 16px; background: #F8F8F8; color: #262626;
-}
-.enviar-btn {
-    background: #E1306C; color: #fff; border: none; border-radius: 50%;
-    width: 35px; height: 35px; cursor: pointer; font-size: 16px;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.2s;
-}
-.enviar-btn:hover { transform: scale(1.1); }
-</style>

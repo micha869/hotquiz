@@ -53,7 +53,6 @@ $(document).ready(function() {
     $(document).on("click", ".emoji-btn", function() {
         const btn = $(this);
         const confId = btn.closest(".confesion-card").attr("id").replace("conf-", "");
-        // Se corrige para obtener el emoji del texto del botón.
         const emojiTipo = btn.text().trim().split(" ")[0]; 
         
         $.ajax({
