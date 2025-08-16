@@ -26,7 +26,7 @@
                 style="width: 100%; padding:10px; border-radius:8px; background:#330066; color:#fff; border:1px solid #ff33cc; margin-bottom:10px;">
 
         <textarea name="descripcion" placeholder="Describe brevemente tu audio..." rows="3" required
-                        style="width: 100%; padding:10px; border-radius:8px; background:#330066; color:#fff; border:1px solid #ff33cc; margin-bottom:10px; resize:none;"></textarea>
+                          style="width: 100%; padding:10px; border-radius:8px; background:#330066; color:#fff; border:1px solid #ff33cc; margin-bottom:10px; resize:none;"></textarea>
 
         <button type="submit" class="boton-futurista" style="background:#ff33cc; color:#fff;">
             Enviar Audio 🎧
@@ -42,10 +42,10 @@
                 <strong style="color: #00ffff;">{{ pista.user }}</strong><br>
                 <p style="color:#ff99ff;">💰 Tokens recibidos: {{ tokens_por_usuario.get(pista.user, 0) }}</p>
 
-                {% if pista.audio_id %}
-                <audio controls style="width:100%; margin-top: 0.5rem; background: #333; border-radius: 50px;">
-                    <source src="{{ url_for('serve_media', file_id=pista.audio) }}" type="audio/mpeg">
-                    Tu navegador no soporta <code>audio</code>.
+                {% if pista.audio %}
+                <audio controls preload="none" style="width:100%; margin-top: 0.5rem; background: #333; border-radius: 50px;">
+                    <source src="{{ url_for('media', file_id=pista.audio) }}" type="audio/mpeg">
+                    Tu navegador no soporta el elemento de audio.
                 </audio>
                 {% else %}
                 <p>Archivo de audio no encontrado.</p>
@@ -104,7 +104,7 @@
                     <form action="{{ url_for('comentar_audio', audio_id=pista._id) }}" method="POST"
                             style="margin-top: 10px; display: flex; gap: 10px;">
                         <input type="text" name="comentario" placeholder="Escribe un comentario..." required
-                                    style="flex: 1; padding: 8px; border-radius: 10px; background:#330066; border:1px solid #ff33cc; color:#fff;">
+                                     style="flex: 1; padding: 8px; border-radius: 10px; background:#330066; border:1px solid #ff33cc; color:#fff;">
                         <button type="submit" class="boton-futurista" style="background:#4caf50;">
                             Enviar
                         </button>

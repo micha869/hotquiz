@@ -67,8 +67,10 @@ pusher_client = pusher.Pusher(
 # ---------------------------------------------------------------------------
 # ¡CORRECCIÓN! Eliminamos la configuración de la carpeta UPLOAD_FOLDER local.
 # Las extensiones se mantienen para validación.
+# ¡CORRECCIÓN! Eliminamos la configuración de la carpeta UPLOAD_FOLDER local.
+# Las extensiones se mantienen para validación.
 ALLOWED_IMAGE = {"png", "jpg", "jpeg", "gif"}
-ALLOWED_AUDIO = {"mp3", "wav", "ogg", "m4a"}
+ALLOWED_AUDIO = {"mp3", "wav", "ogg", "m4a", "aac"} # Agregué 'aac' por si acaso
 ALLOWED_VIDEO = {"mp4", "mov", "avi", "wmv", "flv", "webm"}
 
 def allowed_file(filename, allowed_extensions):
@@ -76,10 +78,8 @@ def allowed_file(filename, allowed_extensions):
 
 # ¡NUEVO! Ruta para servir archivos desde GridFS
 @app.route("/media/<file_id>")
-def serve_media(file_id):
+def media(file_id):
     try:
-        # Se usó fs.get() en lugar de fs.open_download_stream()
-        # El método .get() de la clase GridFS retorna un objeto GridOut que es compatible con send_file
         file_obj = fs.get(ObjectId(file_id))
         return send_file(
             file_obj,
