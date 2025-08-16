@@ -1229,40 +1229,23 @@ def reaccion_conf(id, tipo):
     confesiones_col.update_one({"_id": ObjectId(id)}, {"$inc": {f"reacciones.{tipo}": 1}})
     return jsonify(success=True)
 
-@app.route('/comentar_conf', methods=['POST'])
+
+@app.route("/comentar_conf", methods=["POST"])
 def comentar_conf():
     data = request.get_json()
-    conf_id_str = data.get('id')
-    texto = data.get('texto', '').strip()
-
-    if not conf_id_str or not texto:
-        return jsonify(success=False, message="Datos incompletos.")
-
-    try:
-        conf_id = ObjectId(conf_id_str)
-    except:
-        return jsonify(success=False, message="ID inválido.")
-
-    nuevo_comentario = {
-        "usuario": session.get('alias', 'Anónimo'),
+    conf_id = data.get("id")
+    texto = data.get("texto")
+    alias = get_user()
+    if not conf_id or not texto:
+        return jsonify(success=False)
+    comentario = {
+        "usuario": alias,
         "texto": texto,
-        "fecha": datetime.utcnow()
+        "fecha": datetime.now()
     }
-
-    # Usar la colección correcta
-    resultado = confesiones_col.update_one(
-        {"_id": conf_id},
-        {"$push": {"comentarios": nuevo_comentario}}
-    )
-
-    if resultado.modified_count > 0:
-        return jsonify(success=True, comentario={
-            "usuario": nuevo_comentario["usuario"],
-            "texto": nuevo_comentario["texto"]
-        })
-    else:
-        return jsonify(success=False, message="No se encontró la confesión.")
-
+    confesiones_col.update_one({"_id": ObjectId(conf_id)}, {"$push": {"comentarios": comentario}})
+    comentario["fecha"] = comentario["fecha"].isoformat()
+    return jsonify(success=True, comentario=comentario)
 
 
 @app.route("/eliminar_conf/<id>", methods=["POST"])
