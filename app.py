@@ -190,18 +190,45 @@ def salir():
 # Juego 1 – Foto Hot
 # ---------------------------------------------------------------------------
 from datetime import datetime, timedelta
-from flask import request, redirect, url_for, render_template, flash, jsonify
+from flask import request, redirect, url_for, render_template, flash, jsonify, session
 from bson import ObjectId
 from werkzeug.utils import secure_filename
+from pymongo import MongoClient
+import gridfs
 import base64
 from uuid import uuid4
 
-# Asegúrate de que 'app', 'fs', 'fotos_col', 'usuarios_col', etc. estén definidos
-# y que las importaciones de Flask, ObjectId y datetime sean correctas.
+# ==============================================================================
+# CONFIGURACIÓN E INICIALIZACIÓN (Asegúrate de que esto coincida con tu setup)
+# ==============================================================================
+# app = Flask(__name__)
+# app.secret_key = 'tu_clave_secreta' # ¡Cámbiala por una real y segura!
+#
+# client = MongoClient("mongodb://localhost:27017/") # O tu URL de MongoDB
+# db = client.hotquiz_db
+# fotos_col = db.fotos
+# usuarios_col = db.usuarios
+# fs = gridfs.GridFS(db)
+#
+# ALLOWED_IMAGE = {"png", "jpg", "jpeg", "gif"}
+#
+# def allowed_file(filename, allowed_extensions):
+#     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
+#
+# def get_user_and_saldo():
+#     # Esta es una función de ejemplo, la tuya podría ser diferente
+#     alias = session.get("alias")
+#     if not alias:
+#         return None, 0, 0
+#     usuario = usuarios_col.find_one({"alias": alias})
+#     return alias, usuario.get("tokens_oro", 0), usuario.get("tokens_plata", 0)
 
-# ... (otras rutas y funciones de tu app) ...
+# ==============================================================================
+# RUTAS Y FUNCIONES PRINCIPALES
+# ==============================================================================
 
-# Nueva función para eliminar duelos antiguos
+# **ATENCIÓN: Solo debes tener esta definición de la ruta media.**
+
 def delete_old_duels():
     """Elimina duelos con más de 7 días de antigüedad y sus imágenes asociadas."""
     try:
@@ -209,7 +236,6 @@ def delete_old_duels():
         duelos_viejos = list(fotos_col.find({"fecha": {"$lt": limite_fecha}}))
 
         for duelo in duelos_viejos:
-            # Elimina las imágenes de GridFS
             if "player_image" in duelo and duelo["player_image"]:
                 try:
                     fs.delete(ObjectId(duelo["player_image"]))
@@ -222,15 +248,14 @@ def delete_old_duels():
                 except Exception as e:
                     print(f"Error al eliminar imagen de rival de GridFS: {e}")
 
-        # Elimina los documentos del duelo de la base de datos
         fotos_col.delete_many({"fecha": {"$lt": limite_fecha}})
         print(f"Se eliminaron {len(duelos_viejos)} duelos antiguos.")
     except Exception as e:
         print(f"Error en la tarea de eliminar duelos antiguos: {e}")
 
-# Rutas para el juego
 @app.route("/foto_hot", methods=["GET", "POST"])
 def foto_hot():
+    """Maneja la lógica para CREAR un nuevo reto."""
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
     if not alias:
         flash("Inicia sesión para jugar.")
@@ -244,58 +269,78 @@ def foto_hot():
             flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
             return redirect(url_for("foto_hot"))
 
+        if tokens_plata < 1:
+            flash("No tienes suficientes tokens de plata para crear un reto.")
+            return redirect(url_for("foto_hot"))
+
         file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
         ruta_img = str(file_id)
 
-        duelo = fotos_col.find_one({
-            "$or": [
-                {"player": alias, "rival": rival, "estado": "pendiente"},
-                {"player": rival, "rival": alias, "estado": "pendiente"}
-            ]
+        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
+        
+        fotos_col.insert_one({
+            "player": alias,
+            "player_image": ruta_img,
+            "player_tokens": 0,
+            "player_votes": 0,
+            "rival": rival or None,
+            "rival_image": None,
+            "rival_tokens": 0,
+            "rival_votes": 0,
+            "comentarios": [],
+            "fecha": datetime.now(),
+            "estado": "pendiente",
+            "votantes": []
         })
 
-        if duelo:
-            update = {}
-            if duelo["player"] == alias and not duelo.get("player_image"):
-                update = {"player_image": ruta_img, "player_tokens": 0, "player_votes": 0}
-            elif duelo["rival"] == alias and not duelo.get("rival_image"):
-                update = {"rival_image": ruta_img, "rival_tokens": 0, "rival_votes": 0}
-            else:
-                flash("Ya subiste una foto para este duelo.")
-                return redirect(url_for("foto_hot"))
-            
-            # Devolver token de plata usado
-            usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": 1}})
-            fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
-            flash("Foto subida al duelo 🔥")
-        else:
-            if tokens_plata < 1:
-                flash("No tienes suficientes tokens de plata para crear un reto.")
-                return redirect(url_for("foto_hot"))
-
-            usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
-            fotos_col.insert_one({
-                "player": alias,
-                "player_image": ruta_img,
-                "player_tokens": 0,
-                "player_votes": 0,
-                "rival": rival or None,
-                "rival_image": None,
-                "rival_tokens": 0,
-                "rival_votes": 0,
-                "comentarios": [],
-                "fecha": datetime.now(),
-                "estado": "pendiente",
-                "votantes": []
-            })
-            flash("Foto subida al duelo 🔥")
-
+        flash("Foto subida y reto creado 🔥")
         return redirect(url_for("foto_hot"))
 
-    # En la primera carga, solo muestra la primera página
     duelos = list(fotos_col.find({"estado": "pendiente"}).sort("fecha", -1).limit(10))
     return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
 
+
+@app.route("/aceptar_reto/<reto_id>", methods=["POST"])
+def aceptar_reto(reto_id):
+    """Maneja la lógica para ACEPTAR un reto existente."""
+    alias, _, tokens_plata = get_user_and_saldo()
+    if not alias:
+        return jsonify({"success": False, "message": "Inicia sesión para aceptar el reto."}), 401
+
+    if tokens_plata < 1:
+        return jsonify({"success": False, "message": "No tienes suficientes tokens de plata."}), 403
+
+    if 'imagen' not in request.files:
+        return jsonify({"success": False, "message": "No se encontró el archivo de imagen."}), 400
+
+    file = request.files["imagen"]
+    if not allowed_file(file.filename, ALLOWED_IMAGE):
+        return jsonify({"success": False, "message": "Sube una imagen válida."}), 400
+
+    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
+    if not duelo:
+        return jsonify({"success": False, "message": "Reto no encontrado."}), 404
+
+    if duelo.get("player") == alias or duelo.get("rival") == alias:
+        return jsonify({"success": False, "message": "Ya eres parte de este duelo."}), 409
+    
+    if duelo.get("rival_image"):
+        return jsonify({"success": False, "message": "Este reto ya ha sido aceptado."}), 409
+
+    file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+    
+    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {"$set": {
+            "rival": alias,
+            "rival_image": str(file_id),
+            "rival_tokens": 0,
+            "rival_votes": 0,
+        }}
+    )
+
+    return jsonify({"success": True, "message": "Reto aceptado con éxito."}), 200
 
 @app.route("/foto_hot_paginated/<int:page>")
 def foto_hot_paginated(page):
@@ -309,8 +354,6 @@ def foto_hot_paginated(page):
         html_duelos += render_template("_duelo_card.html", d=d, alias=session.get("alias"))
     
     return jsonify({"html": html_duelos, "has_more": len(duelos) == page_size})
-
-# ... (otras rutas como votar_duelo, comentario_duelo, etc.) ...
 
 @app.route("/eliminar_foto_hot/<reto_id>", methods=["POST"])
 def eliminar_foto_hot(reto_id):
@@ -328,10 +371,8 @@ def eliminar_foto_hot(reto_id):
         flash("No tienes permiso para eliminar este reto.")
         return redirect(url_for("foto_hot"))
 
-    # Devolver el token de plata al usuario
     usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": 1}})
 
-    # Eliminar de GridFS
     if "player_image" in duelo:
         try:
             fs.delete(ObjectId(duelo["player_image"]))
@@ -341,6 +382,7 @@ def eliminar_foto_hot(reto_id):
     fotos_col.delete_one({"_id": duelo["_id"]})
     flash("Reto eliminado y tokens devueltos.")
     return redirect(url_for("foto_hot"))
+
 # ---------------------------------------------------------------------------
 # Juego 2 – Susurra y Gana (audios sensuales)
 # --------------------------------------------------------------------------
