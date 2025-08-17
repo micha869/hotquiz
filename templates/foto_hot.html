@@ -127,6 +127,7 @@
         .comentarios button { width: 30%; }
     }
 </style>
+
 <div class="juego-container">
     <h2 class="neon-text">🔥 ¿Quién calienta más?</h2>
     <p>Sube tu mejor foto sexy y reta a otro usuario o acepta un reto abierto.</p>
@@ -143,14 +144,14 @@
     </form>
 
     <h3>Duelos pendientes</h3>
-    <div id="duelos-grid" class="duelos-grid">
+    <div class="duelos-grid">
         {% for d in duelos %}
             <div class="duelo-card">
                 <div class="duo">
                     <div class="foto-block">
                         <p><strong>{{ d.player }}</strong></p>
                         {% if d.player_image %}
-                            <img src="{{ url_for('serve_media', file_id=d.player_image) }}" alt="Foto de {{ d.player }}">
+                            <img src="{{ url_for('media', file_id=d.player_image) }}" alt="Foto de {{ d.player }}">
                             <p>👍 {{ d.player_votes }} • 💰 {{ d.player_tokens }}</p>
                             <div class="reactions">
                                 <button onclick="votar('{{ d._id }}','player')">Votar</button>
@@ -172,7 +173,7 @@
                         {% if d.rival %}
                             <p><strong>{{ d.rival }}</strong></p>
                             {% if d.rival_image %}
-                                <img src="{{ url_for('serve_media', file_id=d.rival_image) }}" alt="Foto de {{ d.rival }}">
+                                <img src="{{ url_for('media', file_id=d.rival_image) }}" alt="Foto de {{ d.rival }}">
                                 <p>👍 {{ d.rival_votes }} • 💰 {{ d.rival_tokens }}</p>
                                 <div class="reactions">
                                     <button onclick="votar('{{ d._id }}','rival')">Votar</button>
@@ -209,43 +210,60 @@
 </div>
 
 <script>
-    let pagina = 1;
-    let cargando = false;
-    let hayMasDuelos = true;
-
-    function cargarMasDuelos() {
-        if (cargando || !hayMasDuelos) return;
-
-        cargando = true;
-        pagina++;
-
-        fetch(`/foto_hot_paginated/${pagina}`)
-            .then(response => response.json())
-            .then(data => {
-                const duelosGrid = document.getElementById('duelos-grid');
-                duelosGrid.insertAdjacentHTML('beforeend', data.html);
-
-                if (!data.has_more) {
-                    hayMasDuelos = false;
-                    // Opcional: mostrar un mensaje al final del contenido
-                    duelosGrid.insertAdjacentHTML('beforeend', '<p style="margin-top: 2rem; color: #aaa;">No hay más duelos por mostrar.</p>');
-                }
-
-                cargando = false;
-            })
-            .catch(error => {
-                console.error('Error al cargar más duelos:', error);
-                cargando = false;
-            });
-    }
-
-    window.addEventListener('scroll', () => {
-        const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-        if (scrollTop + clientHeight >= scrollHeight - 500) {
-            cargarMasDuelos();
-        }
+function votar(id, lado) {
+    fetch('/votar_duelo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dueloId: id, lado })
+    }).then(r => r.json()).then(a => {
+        if (a.success) location.reload()
+        else alert(a.message)
     });
+}
 
-    // ... (tus funciones JavaScript existentes para votar, reaccionar, comentar, aceptar) ...
+function reaccion(id, lado, emoji) {
+    fetch('/reaccionar_duelo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dueloId: id, lado, emoji })
+    }).then(r => r.json()).then(a => {
+        if (a.success) location.reload()
+        else alert(a.message)
+    });
+}
+
+function comentar(id) {
+    const t = document.getElementById('cm-' + id).value.trim();
+    if (!t) return;
+    fetch('/comentario_duelo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dueloId: id, texto: t })
+    }).then(r => r.json()).then(a => {
+        if (a.success) location.reload()
+        else alert(a.message)
+    });
+}
+
+function aceptar(id, inputId) {
+    const fileInput = document.getElementById(inputId);
+    const file = fileInput.files[0];
+    if (!file) {
+        alert('Selecciona una foto.');
+        return;
+    }
+    if (file.size > 2 * 1024 * 1024) { // Límite de 2MB
+        alert('La imagen no puede pesar más de 2MB.');
+        return;
+    }
+    const r = new FileReader();
+    r.onload = () => {
+        fetch('/aceptar_reto', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dueloId: id, imagen: r.result })
+        }).then(r => r.json()).then(a => {
+            if (a.success) location.reload()
+            else alert(a.message)
+        });
+    };
+    r.readAsDataURL(file);
+}
 </script>
 {% endblock %}
