@@ -7,8 +7,13 @@
 <div class="perfiles-container">
     {% for perfil in perfiles %}
     <div class="card-perfil">
-        <img src="{{ url_for('serve_avatar', file_id=perfil.avatar_id) }}" alt="Avatar" class="avatar-perfil">
-
+        {# CORRECCIÓN: Cambiado 'serve_avatar' a 'stream_avatar' #}
+        {% if perfil.avatar == 'default' %}
+            <img src="{{ url_for('static', filename='default_avatar.png') }}" alt="Avatar" class="avatar-perfil">
+        {% else %}
+            <img src="{{ url_for('stream_avatar', file_id=perfil.avatar) }}" alt="Avatar" class="avatar-perfil">
+        {% endif %}
+        
         {% if perfil.usuario == me %}
         <form action="{{ url_for('cambiar_avatar') }}" method="POST" enctype="multipart/form-data" class="form-avatar">
             <label for="avatar_{{ loop.index }}" class="btn-cambiar-avatar">Cambiar avatar</label>

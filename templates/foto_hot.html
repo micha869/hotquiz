@@ -160,8 +160,9 @@
                             </div>
                         {% endif %}
                         
-                        {% if d.player == alias and not d.rival %}
-                            <form action="{{ url_for('eliminar_foto_hot', reto_id=d._id) }}" method="POST" onsubmit="return confirm('Eliminar este reto? Se devolverán los tokens.')">
+                        {# Corregido: Mostrar el botón de eliminar solo si el usuario actual es el creador del reto #}
+                        {% if d.player == alias %}
+                            <form action="{{ url_for('eliminar_foto_hot', reto_id=d._id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este reto? Se devolverán los tokens.')">
                                 <button type="submit" class="eliminar-reto-btn">❌ Eliminar reto</button>
                             </form>
                         {% endif %}
@@ -182,6 +183,10 @@
                                 </div>
                             {% else %}
                                 <p>Rival sin foto</p>
+                                {# El usuario que es retado debe usar el formulario principal para subir su foto #}
+                                {% if d.rival == alias %}
+                                    <p>Sube tu foto para este duelo en el formulario de arriba.</p>
+                                {% endif %}
                             {% endif %}
                         {% else %}
                             <div class="aceptar-reto-box">

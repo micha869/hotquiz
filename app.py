@@ -255,7 +255,6 @@ def delete_old_duels():
 
 @app.route("/foto_hot", methods=["GET", "POST"])
 def foto_hot():
-    """Maneja la lógica para CREAR un nuevo reto."""
     alias, tokens_oro, tokens_plata = get_user_and_saldo()
     if not alias:
         flash("Inicia sesión para jugar.")
@@ -269,91 +268,136 @@ def foto_hot():
             flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
             return redirect(url_for("foto_hot"))
 
-        if tokens_plata < 1:
-            flash("No tienes suficientes tokens de plata para crear un reto.")
-            return redirect(url_for("foto_hot"))
-
         file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
-        ruta_img = str(file_id)
-
-        usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
         
-        fotos_col.insert_one({
-            "player": alias,
-            "player_image": ruta_img,
-            "player_tokens": 0,
-            "player_votes": 0,
-            "rival": rival or None,
-            "rival_image": None,
-            "rival_tokens": 0,
-            "rival_votes": 0,
-            "comentarios": [],
-            "fecha": datetime.now(),
-            "estado": "pendiente",
-            "votantes": []
+        duelo = fotos_col.find_one({
+            "$or": [
+                {"player": alias, "rival": rival, "estado": "pendiente"},
+                {"player": rival, "rival": alias, "estado": "pendiente"}
+            ]
         })
 
-        flash("Foto subida y reto creado 🔥")
-        return redirect(url_for("foto_hot"))
+        if duelo:
+            update = {}
+            if duelo["player"] == alias and not duelo.get("player_image"):
+                update = {"player_image": str(file_id), "player_tokens": 0, "player_votes": 0}
+            elif duelo["rival"] == alias and not duelo.get("rival_image"):
+                update = {"rival_image": str(file_id), "rival_tokens": 0, "rival_votes": 0}
+            else:
+                flash("Ya subiste una foto para este duelo.")
+                # Importante: Eliminar la foto recién subida para evitar basura en la DB
+                fs.delete(file_id)
+                return redirect(url_for("foto_hot"))
 
-    duelos = list(fotos_col.find({"estado": "pendiente"}).sort("fecha", -1).limit(10))
-    return render_template("foto_hot.html", alias=alias, saldo=tokens_oro, saldo_plata=tokens_plata, duelos=duelos)
+            fotos_col.update_one({"_id": duelo["_id"]}, {"$set": update})
+            flash("Foto subida al duelo 🔥")
+        else:
+            fotos_col.insert_one({
+                "player": alias,
+                "player_image": str(file_id),
+                "player_tokens": 0,
+                "player_votes": 0,
+                "rival": rival or None,
+                "rival_image": None,
+                "rival_tokens": 0,
+                "rival_votes": 0,
+                "comentarios": [],
+                "fecha": datetime.now(),
+                "estado": "pendiente",
+                "votantes": []
+            })
+            flash("Foto subida al duelo 🔥")
 
+    return redirect(url_for("foto_hot"))
 
-@app.route("/aceptar_reto/<reto_id>", methods=["POST"])
-def aceptar_reto(reto_id):
-    """Maneja la lógica para ACEPTAR un reto existente."""
-    alias, _, tokens_plata = get_user_and_saldo()
+@app.route("/votar_duelo", methods=["POST"])
+def votar_duelo():
+    alias, tokens_oro, _ = get_user_and_saldo()
     if not alias:
-        return jsonify({"success": False, "message": "Inicia sesión para aceptar el reto."}), 401
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
 
-    if tokens_plata < 1:
-        return jsonify({"success": False, "message": "No tienes suficientes tokens de plata."}), 403
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    lado = data.get("lado")
+    if lado not in ["player", "rival"]:
+        return jsonify(success=False, message="Lado inválido"), 400
 
-    if 'imagen' not in request.files:
-        return jsonify({"success": False, "message": "No se encontró el archivo de imagen."}), 400
-
-    file = request.files["imagen"]
-    if not allowed_file(file.filename, ALLOWED_IMAGE):
-        return jsonify({"success": False, "message": "Sube una imagen válida."}), 400
-
-    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
+    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
     if not duelo:
-        return jsonify({"success": False, "message": "Reto no encontrado."}), 404
+        return jsonify(success=False, message="Duelo no encontrado"), 404
 
-    if duelo.get("player") == alias or duelo.get("rival") == alias:
-        return jsonify({"success": False, "message": "Ya eres parte de este duelo."}), 409
-    
-    if duelo.get("rival_image"):
-        return jsonify({"success": False, "message": "Este reto ya ha sido aceptado."}), 409
+    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
+        return jsonify(success=False, message="Ya votaste"), 403
 
-    file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
-    
-    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": -1}})
-    fotos_col.update_one(
-        {"_id": duelo["_id"]},
-        {"$set": {
-            "rival": alias,
-            "rival_image": str(file_id),
-            "rival_tokens": 0,
-            "rival_votes": 0,
-        }}
+    if tokens_oro < 1:
+        return jsonify(success=False, message="Tokens oro insuficientes"), 403
+
+    usuarios_col.update_one(
+        {"alias": alias, "tokens_oro": {"$gte": 1}},
+        {"$inc": {"tokens_oro": -1}}
     )
 
-    return jsonify({"success": True, "message": "Reto aceptado con éxito."}), 200
+    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
+    usuarios_col.update_one(
+        {"alias": ganador_alias},
+        {"$inc": {"tokens_oro": 1}}
+    )
 
-@app.route("/foto_hot_paginated/<int:page>")
-def foto_hot_paginated(page):
-    """API para el scroll infinito."""
-    page_size = 10
-    skip_amount = (page - 1) * page_size
-    duelos = list(fotos_col.find({"estado": "pendiente"}).sort("fecha", -1).skip(skip_amount).limit(page_size))
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {
+            "$inc": {f"{lado}_votes": 1},
+            "$push": {"votantes": {"usuario": alias, "lado": lado, "fecha": datetime.now()}}
+        }
+    )
+    return jsonify(success=True, message="Voto registrado y token transferido")
+
+@app.route("/comentario_duelo", methods=["POST"])
+def comentario_duelo():
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Debes iniciar sesión"), 401
+
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    texto = data.get("texto", "").strip()
+    if not duelo_id or not texto:
+        return jsonify(success=False, message="Comentario inválido"), 400
+
+    comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
+    fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
+    return jsonify(success=True)
+
+@app.route("/aceptar_reto", methods=["POST"])
+def aceptar_reto():
+    alias, _, _ = get_user_and_saldo()
+    if not alias:
+        return jsonify(success=False, message="Inicia sesión"), 401
+
+    data = request.get_json()
+    duelo_id = data.get("dueloId")
+    imagen_data = data.get("imagen")
+    if not duelo_id or not imagen_data:
+        return jsonify(success=False, message="Faltan datos"), 400
+
+    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
     
-    html_duelos = ""
-    for d in duelos:
-        html_duelos += render_template("_duelo_card.html", d=d, alias=session.get("alias"))
+    # Este reto solo puede ser aceptado si no tiene un rival aún
+    # y la persona que lo acepta no es quien lo creó.
+    if not duelo or duelo.get("rival") or duelo["player"] == alias:
+        return jsonify(success=False, message="Reto no disponible para aceptar"), 403
+
+    header, b64 = imagen_data.split(",", 1)
+    ext = header.split(";")[0].split("/")[1]
     
-    return jsonify({"html": html_duelos, "has_more": len(duelos) == page_size})
+    imagen_binario = base64.b64decode(b64)
+    file_id = fs.put(imagen_binario, filename=f"rival.{ext}", content_type=f"image/{ext}")
+
+    fotos_col.update_one(
+        {"_id": duelo["_id"]},
+        {"$set": {"rival": alias, "rival_image": str(file_id), "rival_votes": 0, "rival_tokens": 0}}
+    )
+    return jsonify(success=True)
 
 @app.route("/eliminar_foto_hot/<reto_id>", methods=["POST"])
 def eliminar_foto_hot(reto_id):
@@ -370,19 +414,22 @@ def eliminar_foto_hot(reto_id):
     if duelo["player"] != alias:
         flash("No tienes permiso para eliminar este reto.")
         return redirect(url_for("foto_hot"))
-
-    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_plata": 1}})
-
-    if "player_image" in duelo:
+    
+    if duelo.get("player_image"):
         try:
             fs.delete(ObjectId(duelo["player_image"]))
         except Exception as e:
-            print(f"Error al eliminar de GridFS: {e}")
+            print(f"Error al eliminar la imagen del player: {e}")
+
+    if duelo.get("rival_image"):
+        try:
+            fs.delete(ObjectId(duelo["rival_image"]))
+        except Exception as e:
+            print(f"Error al eliminar la imagen del rival: {e}")
 
     fotos_col.delete_one({"_id": duelo["_id"]})
-    flash("Reto eliminado y tokens devueltos.")
+    flash("Reto eliminado.")
     return redirect(url_for("foto_hot"))
-
 # ---------------------------------------------------------------------------
 # Juego 2 – Susurra y Gana (audios sensuales)
 # --------------------------------------------------------------------------
@@ -962,133 +1009,7 @@ def eliminar_cumplido():
 # ---------------------------------------------------------------------------
 # Juego 4 – HotCopy
 # --------------------------------------------------------------------------
-def asegurar_reacciones(fotos):
-    """Asegura que cada foto tenga reacciones inicializadas"""
-    for foto in fotos:
-        if "reacciones" not in foto or not isinstance(foto["reacciones"], dict):
-            foto["reacciones"] = {"🔥": 0, "😍": 0, "😂": 0, "😮": 0}
-    return fotos
-
-@app.route("/hotcopy", methods=["GET", "POST"])
-def hotcopy():
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        flash("Inicia sesión para participar.")
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        original_id = request.form.get("original_id") or None
-        file = request.files.get("imagen")
-        
-        if not file or file.filename == "" or not allowed_file(file.filename, ALLOWED_IMAGE):
-            flash("Sube una imagen válida (png, jpg, jpeg, gif).")
-            return redirect(url_for("hotcopy"))
-        
-        # 💡 Corrección: Usamos GridFS para guardar el archivo
-        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
-
-        hotcopy_col.insert_one({
-            "user": alias,
-            "original_id": ObjectId(original_id) if original_id else None,
-            "image": str(file_id), # Guardamos el ID del archivo
-            "votos": 0,
-            "reacciones": {"🔥": 0, "😍": 0, "😂": 0, "😮": 0},
-            "fecha": datetime.now(),
-            "comentarios": [],
-        })
-        flash("✅ Tu foto ha sido subida exitosamente.")
-        return redirect(url_for("hotcopy"))
-
-    originals_cursor = hotcopy_col.find({"original_id": None}).sort("fecha", -1)
-    originals = []
-    for original in originals_cursor:
-        original = asegurar_reacciones([original])[0]
-        imitations = list(hotcopy_col.find({"original_id": original["_id"]}).sort("fecha", 1))
-        imitations = asegurar_reacciones(imitations)
-        original["imitations"] = imitations
-        originals.append(original)
-        
-    saldo = tokens_oro + tokens_plata
-    
-    return render_template("hotcopy.html", alias=alias, saldo=saldo, originals=originals)
-
-@app.route("/votar/<foto_id>", methods=["POST"])
-def votar(foto_id):
-    alias, tokens_oro, tokens_plata = get_user_and_saldo()
-    if not alias:
-        return jsonify(success=False, message="Debes iniciar sesión para votar.")
-    
-    if tokens_oro < 1:
-        return jsonify(success=False, message="No tienes tokens de oro suficientes para votar.")
-    
-    usuarios_col.update_one({"alias": alias}, {"$inc": {"tokens_oro": -1}})
-    hotcopy_col.update_one({"_id": ObjectId(foto_id)}, {"$inc": {"votos": 1}})
-    
-    return jsonify(success=True, message="✅ Voto registrado correctamente y se descontó 1 token oro.")
-
-@app.route("/reaccion/<foto_id>/<tipo>", methods=["POST"])
-def reaccion(foto_id, tipo):
-    if tipo not in ["🔥", "😍", "😂", "😮"]:
-        return jsonify(success=False, message="⚠️ Reacción inválida.")
-    hotcopy_col.update_one({"_id": ObjectId(foto_id)}, {"$inc": {f"reacciones.{tipo}": 1}})
-    return jsonify(success=True, message=f"Reacción {tipo} agregada 👍")
-
-@app.route("/comentar_hotcopy", methods=["POST"])
-def comentar_hotcopy():
-    data = request.get_json()
-    foto_id = data.get("id")
-    texto = data.get("texto")
-    alias = session.get("alias")
-
-    if not alias or not foto_id or not texto:
-        return jsonify(success=False, message="❌ Datos incompletos o no autenticado.")
-
-    comentario = {"usuario": alias, "texto": texto}
-
-    hotcopy_col.update_one(
-        {"_id": ObjectId(foto_id)},
-        {"$push": {"comentarios": comentario}}
-    )
-    return jsonify(success=True, message="✅ Comentario guardado.")
-
-@app.route("/hotcopy/eliminar/<foto_id>", methods=["POST"])
-def eliminar_hotcopy(foto_id):
-    alias, _, _ = get_user_and_saldo()
-    if not alias:
-        flash("Debes iniciar sesión para eliminar fotos.")
-        return redirect(url_for("hotcopy"))
-
-    foto = hotcopy_col.find_one({"_id": ObjectId(foto_id)})
-    if not foto:
-        flash("Foto no encontrada.")
-        return redirect(url_for("hotcopy"))
-    
-    if foto["user"] != alias:
-        flash("No puedes eliminar fotos que no son tuyas.")
-        return redirect(url_for("hotcopy"))
-    
-    # 💡 Corrección: Eliminamos de GridFS
-    try:
-        if "image" in foto:
-            fs.delete(ObjectId(foto["image"]))
-    except Exception as e:
-        print(f"Error al eliminar de GridFS: {e}")
-    
-    # Eliminar de la base de datos
-    hotcopy_col.delete_one({"_id": ObjectId(foto_id)})
-    
-    # Si la foto eliminada era una original, también se eliminan sus imitaciones
-    if "original_id" not in foto:
-        imitations_to_delete = hotcopy_col.find({"original_id": ObjectId(foto_id)})
-        for imitation in imitations_to_delete:
-            try:
-                fs.delete(ObjectId(imitation["image"]))
-            except Exception as e:
-                print(f"Error al eliminar la imitación de GridFS: {e}")
-        hotcopy_col.delete_many({"original_id": ObjectId(foto_id)})
-    
-    flash("Foto eliminada correctamente.")
-    return redirect(url_for("hotcopy"))
+# Código Python modificado para usar la ruta /media/<file_id>
 
 # ---------------------------------------------------------------------------
 # – ¿Quién lo dijo adiviona ?
@@ -1594,13 +1515,12 @@ from dotenv import load_dotenv
 from gridfs import GridFSBucket, NoFile
 from io import BytesIO
 
-
-# Suponiendo que estas variables están definidas en tu app principal
+# Configuración inicial (Asegúrate de que tus variables estén definidas)
 # app = Flask(__name__)
 # usuarios_col = db.usuarios
 # confesiones_col = db.confesiones
 # mensajes_col = db.mensajes
-# fs = GridFSBucket(db) # ¡Importante! Asegúrate de tener esto
+# fs = GridFSBucket(db)
 
 ALLOWED_AVATAR = {'png', 'jpg', 'jpeg', 'gif'}
 ALLOWED_CHAT = {'png', 'jpg', 'jpeg', 'gif', 'mp3', 'wav', 'ogg', 'm4a'}
@@ -1612,10 +1532,9 @@ def get_gravatar_hash(alias):
     """Calcula el hash MD5 para Gravatar."""
     return hashlib.md5(alias.lower().encode('utf-8')).hexdigest()
 
-# 💡 Corrección: Filtro para avatares actualizado para usar la nueva ruta de GridFS
 @app.template_filter('avatar_url')
 def avatar_url_filter(user_alias):
-    """Genera la URL del avatar, usando un avatar personalizado si existe."""
+    """Genera la URL del avatar, usando uno personalizado si existe."""
     user = usuarios_col.find_one({'alias': user_alias})
     if user and 'avatar' in user and user['avatar'] != 'default':
         return url_for('stream_avatar', file_id=user['avatar'])
@@ -1634,16 +1553,15 @@ def sanitize_for_pusher(name):
 
 # --- Rutas de la aplicación ---
 
-# 💡 Corrección: Ruta para servir avatares desde GridFS
 @app.route('/avatar/<file_id>')
 def stream_avatar(file_id):
+    """Ruta para servir avatares desde GridFS."""
     try:
         file = fs.get(ObjectId(file_id))
         return send_file(BytesIO(file.read()), mimetype=file.content_type, as_attachment=False)
     except NoFile:
         return abort(404)
 
-# 💡 Corrección: Ruta para subir y cambiar avatares con GridFS
 @app.route('/cambiar_avatar', methods=['POST'])
 def cambiar_avatar():
     if 'alias' not in session:
@@ -1656,9 +1574,7 @@ def cambiar_avatar():
         return redirect(url_for('perfiles'))
 
     if allowed_file(archivo.filename, ALLOWED_AVATAR):
-        # Subir el archivo a GridFS
         file_id = fs.put(archivo, filename=secure_filename(f"{uuid.uuid4().hex}_{archivo.filename}"), content_type=archivo.content_type)
-        # Guardar el ID del archivo en el perfil del usuario
         usuarios_col.update_one({'alias': session['alias']}, {'$set': {'avatar': str(file_id)}})
         flash("Avatar actualizado correctamente")
     else:
@@ -1690,7 +1606,7 @@ def perfiles():
             'followers': len(doc.get('followers', [])),
             'following': len(doc.get('following', [])),
             'is_following': usuario in me_following,
-            'avatar': doc.get('avatar', 'default.png'),
+            'avatar': doc.get('avatar', 'default'),
             'verificado': doc.get('verificado', False),
         })
 
@@ -1718,7 +1634,6 @@ def chat(target):
     me = session['alias']
     
     sala = "_".join(sorted([sanitize_for_pusher(me), sanitize_for_pusher(target)]))
-
     mensajes = list(mensajes_col.find({'sala': sala}).sort('timestamp', 1))
 
     for m in mensajes:
@@ -1735,16 +1650,15 @@ def chat(target):
                            pusher_key=os.getenv("PUSHER_KEY", "24aebba9248c791c8722"),
                            pusher_cluster=os.getenv("PUSHER_CLUSTER", "mt1"))
 
-# 💡 Corrección: Ruta para servir archivos de chat desde GridFS
 @app.route('/chat_media/<file_id>')
 def stream_chat_media(file_id):
+    """Ruta para servir archivos de chat desde GridFS."""
     try:
         file = fs.get(ObjectId(file_id))
         return send_file(BytesIO(file.read()), mimetype=file.content_type, as_attachment=False)
     except NoFile:
         return abort(404)
 
-# 💡 Corrección: Ruta para enviar mensajes con archivos multimedia en GridFS
 @app.route('/send_message', methods=['POST'])
 def send_message():
     from_user = session.get('alias')
@@ -1762,9 +1676,7 @@ def send_message():
     if 'media' in request.files:
         media_file = request.files['media']
         if media_file and allowed_file(media_file.filename, ALLOWED_CHAT):
-            # Subir el archivo a GridFS
             file_id = fs.put(media_file, filename=secure_filename(f"{from_user}_{int(time.time())}_{media_file.filename}"), content_type=media_file.content_type)
-            # Guardar el ID del archivo en el mensaje
             mensaje_a_guardar = str(file_id)
             ext = media_file.filename.rsplit('.', 1)[1].lower()
             tipo = 'image' if ext in {'png', 'jpg', 'jpeg', 'gif'} else 'audio'
@@ -1784,7 +1696,6 @@ def send_message():
         'timestamp': timestamp
     })
 
-    # Obtener la URL del avatar para enviarla a Pusher
     from_user_avatar_url = avatar_url_filter(from_user)
 
     pusher_client.trigger(sala, 'receive_message', {
@@ -1797,7 +1708,6 @@ def send_message():
     })
 
     return 'OK'
-
 # -----------------------
 # FORMULARIO DE VERIFICACIÓN
 # -----------------------
