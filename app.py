@@ -658,7 +658,15 @@ def jugar():
         flash("Debes iniciar sesión para jugar")
         return redirect(url_for("index"))
     
-    retos = list(retos_col.find({"estado": "pendiente"}))
+    retos = []
+    try:
+        # Intenta obtener los retos de la base de datos
+        retos = list(retos_col.find({"estado": "pendiente"}))
+    except Exception as e:
+        # Si falla, registra el error y usa una lista vacía
+        print(f"Error al obtener retos de la base de datos: {e}")
+        flash("Hubo un error al cargar los juegos. Inténtalo de nuevo más tarde.")
+
     return render_template("jugar.html", saldo=tokens_oro, saldo_plata=tokens_plata, retos=retos)
 
 @app.route("/lanzar", methods=["GET", "POST"])
