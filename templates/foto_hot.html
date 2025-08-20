@@ -150,7 +150,7 @@
                 <div class="duo">
                     <div class="foto-block">
                         <p><strong>{{ d.player }}</strong></p>
-                        {% if d.player_image %}
+                        {% if d.player_image and d.player_image|is_valid_objectid %}
                             <img src="{{ url_for('media', file_id=d.player_image) }}" alt="Foto de {{ d.player }}">
                             <p>👍 {{ d.player_votes }} • 💰 {{ d.player_tokens }}</p>
                             <div class="reactions">
@@ -160,7 +160,6 @@
                             </div>
                         {% endif %}
                         
-                        {# Corregido: Mostrar el botón de eliminar solo si el usuario actual es el creador del reto #}
                         {% if d.player == alias %}
                             <form action="{{ url_for('eliminar_foto_hot', reto_id=d._id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este reto? Se devolverán los tokens.')">
                                 <button type="submit" class="eliminar-reto-btn">❌ Eliminar reto</button>
@@ -173,7 +172,7 @@
                     <div class="foto-block">
                         {% if d.rival %}
                             <p><strong>{{ d.rival }}</strong></p>
-                            {% if d.rival_image %}
+                            {% if d.rival_image and d.rival_image|is_valid_objectid %}
                                 <img src="{{ url_for('media', file_id=d.rival_image) }}" alt="Foto de {{ d.rival }}">
                                 <p>👍 {{ d.rival_votes }} • 💰 {{ d.rival_tokens }}</p>
                                 <div class="reactions">
@@ -183,7 +182,6 @@
                                 </div>
                             {% else %}
                                 <p>Rival sin foto</p>
-                                {# El usuario que es retado debe usar el formulario principal para subir su foto #}
                                 {% if d.rival == alias %}
                                     <p>Sube tu foto para este duelo en el formulario de arriba.</p>
                                 {% endif %}

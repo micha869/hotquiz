@@ -11,7 +11,6 @@ from uuid import uuid4
 
 import os
 from pymongo import MongoClient
-from bson.objectid import ObjectId
 from datetime import timedelta, datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
@@ -22,7 +21,8 @@ import pusher
 from gridfs import GridFS
 import base64
 import certifi
-
+from bson.errors import InvalidId
+from bson.objectid import ObjectId
 # ---------------------------------------------------------------------------
 # Config Flask + Mongo
 # ---------------------------------------------------------------------------
@@ -89,6 +89,17 @@ def media(file_id):
     except Exception as e:
         print(f"Error al servir el archivo: {e}")
         return "Archivo no encontrado", 404
+    
+def is_valid_objectid(id_string):
+    """Verifica si una cadena es un ObjectId válido."""
+    try:
+        ObjectId(id_string)
+        return True
+    except (InvalidId, TypeError):
+        return False
+
+# ¡IMPORTANTE! Agrega esta línea para registrar el filtro en Jinja2
+app.jinja_env.filters['is_valid_objectid'] = is_valid_objectid
 
 # ---------------------------------------------------------------------------
 # Helper: obtener usuario y saldo
@@ -189,6 +200,7 @@ def salir():
 # ---------------------------------------------------------------------------
 # Juego 1 – Foto Hot
 # ---------------------------------------------------------------------------
+
 from datetime import datetime, timedelta
 from flask import request, redirect, url_for, render_template, flash, jsonify, session
 from bson import ObjectId
@@ -199,17 +211,15 @@ import base64
 from uuid import uuid4
 
 # ==============================================================================
-# CONFIGURACIÓN E INICIALIZACIÓN (Asegúrate de que esto coincida con tu setup)
+# CONFIGURACIÓN E INICIALIZACIÓN
 # ==============================================================================
+# Asumiendo que estas variables están definidas en la parte principal de tu app.
 # app = Flask(__name__)
-# app.secret_key = 'tu_clave_secreta' # ¡Cámbiala por una real y segura!
-#
-# client = MongoClient("mongodb://localhost:27017/") # O tu URL de MongoDB
+# client = MongoClient("mongodb://localhost:27017/") 
 # db = client.hotquiz_db
 # fotos_col = db.fotos
 # usuarios_col = db.usuarios
 # fs = gridfs.GridFS(db)
-#
 # ALLOWED_IMAGE = {"png", "jpg", "jpeg", "gif"}
 #
 # def allowed_file(filename, allowed_extensions):
@@ -222,13 +232,6 @@ from uuid import uuid4
 #         return None, 0, 0
 #     usuario = usuarios_col.find_one({"alias": alias})
 #     return alias, usuario.get("tokens_oro", 0), usuario.get("tokens_plata", 0)
-
-# ==============================================================================
-# RUTAS Y FUNCIONES PRINCIPALES
-# ==============================================================================
-
-# **ATENCIÓN: Solo debes tener esta definición de la ruta media.**
-
 def delete_old_duels():
     """Elimina duelos con más de 7 días de antigüedad y sus imágenes asociadas."""
     try:
@@ -268,8 +271,12 @@ def foto_hot():
             flash("Sube una imagen válida (.png, .jpg, .jpeg, .gif)")
             return redirect(url_for("foto_hot"))
 
-        file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
-        
+        try:
+            file_id = fs.put(file, filename=secure_filename(file.filename), content_type=file.content_type)
+        except Exception as e:
+            flash(f"Error al subir la imagen: {e}")
+            return redirect(url_for("foto_hot"))
+
         duelo = fotos_col.find_one({
             "$or": [
                 {"player": alias, "rival": rival, "estado": "pendiente"},
@@ -285,7 +292,6 @@ def foto_hot():
                 update = {"rival_image": str(file_id), "rival_tokens": 0, "rival_votes": 0}
             else:
                 flash("Ya subiste una foto para este duelo.")
-                # Importante: Eliminar la foto recién subida para evitar basura en la DB
                 fs.delete(file_id)
                 return redirect(url_for("foto_hot"))
 
@@ -306,9 +312,21 @@ def foto_hot():
                 "estado": "pendiente",
                 "votantes": []
             })
-            flash("Foto subida al duelo 🔥")
+            flash("Foto subida para un nuevo duelo 🔥")
 
-    return redirect(url_for("foto_hot"))
+        return redirect(url_for("foto_hot"))
+
+    duelos_pendientes = list(fotos_col.find({
+        "terminado": {"$ne": True}
+    }).sort("fecha", -1))
+
+    return render_template(
+        "foto_hot.html",
+        duelos=duelos_pendientes,
+        alias=alias,
+        saldo=tokens_oro,
+        saldo_plata=tokens_plata
+    )
 
 @app.route("/votar_duelo", methods=["POST"])
 def votar_duelo():
@@ -322,11 +340,15 @@ def votar_duelo():
     if lado not in ["player", "rival"]:
         return jsonify(success=False, message="Lado inválido"), 400
 
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    try:
+        duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    except InvalidId:
+        return jsonify(success=False, message="ID de duelo inválido"), 400
+
     if not duelo:
         return jsonify(success=False, message="Duelo no encontrado"), 404
 
-    if any(v["usuario"] == alias for v in duelo.get("votantes", [])):
+    if any(v.get("usuario") == alias for v in duelo.get("votantes", [])):
         return jsonify(success=False, message="Ya votaste"), 403
 
     if tokens_oro < 1:
@@ -337,11 +359,12 @@ def votar_duelo():
         {"$inc": {"tokens_oro": -1}}
     )
 
-    ganador_alias = duelo["player"] if lado == "player" else duelo["rival"]
-    usuarios_col.update_one(
-        {"alias": ganador_alias},
-        {"$inc": {"tokens_oro": 1}}
-    )
+    ganador_alias = duelo.get("player") if lado == "player" else duelo.get("rival")
+    if ganador_alias:
+        usuarios_col.update_one(
+            {"alias": ganador_alias},
+            {"$inc": {"tokens_oro": 1}}
+        )
 
     fotos_col.update_one(
         {"_id": duelo["_id"]},
@@ -363,6 +386,11 @@ def comentario_duelo():
     texto = data.get("texto", "").strip()
     if not duelo_id or not texto:
         return jsonify(success=False, message="Comentario inválido"), 400
+    
+    try:
+        ObjectId(duelo_id)
+    except InvalidId:
+        return jsonify(success=False, message="ID de duelo inválido"), 400
 
     comentario = {"user": alias, "texto": texto, "fecha": datetime.now()}
     fotos_col.update_one({"_id": ObjectId(duelo_id)}, {"$push": {"comentarios": comentario}})
@@ -380,10 +408,11 @@ def aceptar_reto():
     if not duelo_id or not imagen_data:
         return jsonify(success=False, message="Faltan datos"), 400
 
-    duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    try:
+        duelo = fotos_col.find_one({"_id": ObjectId(duelo_id)})
+    except InvalidId:
+        return jsonify(success=False, message="ID de duelo inválido"), 400
     
-    # Este reto solo puede ser aceptado si no tiene un rival aún
-    # y la persona que lo acepta no es quien lo creó.
     if not duelo or duelo.get("rival") or duelo["player"] == alias:
         return jsonify(success=False, message="Reto no disponible para aceptar"), 403
 
@@ -406,7 +435,12 @@ def eliminar_foto_hot(reto_id):
         flash("Inicia sesión para eliminar el reto.")
         return redirect(url_for("index"))
 
-    duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
+    try:
+        duelo = fotos_col.find_one({"_id": ObjectId(reto_id)})
+    except InvalidId:
+        flash("Reto no encontrado.")
+        return redirect(url_for("foto_hot"))
+
     if not duelo:
         flash("Reto no encontrado.")
         return redirect(url_for("foto_hot"))
