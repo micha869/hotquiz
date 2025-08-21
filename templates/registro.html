@@ -18,7 +18,7 @@
             required 
             autocomplete="off"
             autofocus
-            style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;"
+            style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: black; font-size: 1rem;"
         >
 
         <label for="email" style="color: #000000; font-weight: 700;">Correo electrónico:</label>
@@ -29,21 +29,26 @@
             placeholder="correo@ejemplo.com" 
             required 
             autocomplete="email"
-            style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;"
+            style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: black; font-size: 1rem;"
         >
 
         <label for="password" style="color: #000000; font-weight: 700;">Contraseña:</label>
-        <input 
-            type="password" 
-            id="password" 
-            name="password" 
-            placeholder="********" 
-            required 
-            autocomplete="new-password"
-            style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: #fff; font-size: 1rem;"
-        >
+        <div class="password-container" style="position: relative; margin-bottom: 20px;">
+            <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                placeholder="********" 
+                required 
+                autocomplete="new-password"
+                style="width: 100%; padding: 12px; border-radius: 10px; border: none; background: rgba(255,255,255,0.1); color: black; font-size: 1rem; padding-right: 40px;"
+            >
+            <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: black; font-size: 1rem;">
+                👁️
+            </button>
+        </div>
 
-        <div style="margin-bottom: 15px; font-size: 0.95rem; color: #ccc;">
+        <div style="margin-bottom: 15px; font-size: 0.95rem; color: #0e0d0d;">
             <label>
                 <input type="checkbox" name="acepta_terminos" required>
                 Acepto los 
@@ -51,7 +56,7 @@
             </label>
         </div>
 
-        <div style="margin-bottom: 20px; font-size: 0.95rem; color: #ccc;">
+        <div style="margin-bottom: 20px; font-size: 0.95rem; color: #080808;">
             <label>
                 <input type="checkbox" name="acepta_privacidad" required>
                 He leído la 
@@ -59,16 +64,27 @@
             </label>
         </div>
 
-        <button type="submit" style="width: 100%; padding: 14px; background: linear-gradient(90deg, #ff4d94, #a64dff); color: white; font-weight: bold; border: none; border-radius: 12px; box-shadow: 0 0 15px #ff4d94; font-size: 1rem; transition: transform 0.2s;">
+        <button type="submit" style="width: 100%; padding: 14px; background: linear-gradient(90deg, #ff4d94, #a64dff); color: rgb(10, 10, 10); font-weight: bold; border: none; border-radius: 12px; box-shadow: 0 0 15px #ff4d94; font-size: 1rem; transition: transform 0.2s;">
             🚀 Registrarse
         </button>
     </form>
 
     <p style="margin-top: 1.5rem; color: #ff99cc; font-weight: 600; text-align: center;">
         ¿Ya tienes cuenta? 
-        <a href="{{ url_for('login') }}" style="display: inline-block; font-weight: bold; color: #fff; background: linear-gradient(90deg, #4d94ff, #77a9ff); padding: 10px 18px; border-radius: 10px; text-decoration: none; box-shadow: 0 0 15px #4d94ff; margin-top: 10px;">
+        <a href="{{ url_for('login') }}" style="display: inline-block; font-weight: bold; color: #111111; background: linear-gradient(90deg, #4d94ff, #77a9ff); padding: 10px 18px; border-radius: 10px; text-decoration: none; box-shadow: 0 0 15px #4d94ff; margin-top: 10px;">
             Inicia sesión
         </a>
     </p>
 </div>
+
+<script>
+    const togglePassword = document.querySelector('#togglePassword');
+    const password = document.querySelector('#password');
+
+    togglePassword.addEventListener('click', function (e) {
+        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+        password.setAttribute('type', type);
+        this.textContent = (type === 'password' ? '👁️' : '🔒');
+    });
+</script>
 {% endblock %}
